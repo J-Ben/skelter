@@ -116,9 +116,8 @@ export function withSkeleton<P extends object>(
   });
 
   WrappedComponent.displayName = `withSkeleton(${displayName})`;
-  return WrappedComponent;
+  return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
-
 /**
  * Internal renderer that handles layout capture and skeleton display.
  * Separated from withSkeleton to keep hook usage clean and predictable.
@@ -147,12 +146,12 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
    */
   const effectiveConfig: SkeletonConfig | undefined = isInFlatList
     ? {
-        ...skeletonConfig,
-        animation:
-          skeletonConfig?.animation === 'shatter'
-            ? 'pulse'
-            : skeletonConfig?.animation,
-      }
+      ...skeletonConfig,
+      animation:
+        skeletonConfig?.animation === 'shatter'
+          ? 'pulse'
+          : skeletonConfig?.animation,
+    }
     : skeletonConfig;
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
