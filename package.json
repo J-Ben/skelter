@@ -19,6 +19,10 @@
   },
   "homepage": "https://github.com/J-Ben/skelter#readme",
   "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-native": "^0.72.8",
+    "react": "^19.2.5",
+    "react-native": "^0.85.1",
     "typescript": "^6.0.3"
   }
 }
