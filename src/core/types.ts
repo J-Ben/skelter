@@ -51,6 +51,9 @@ export interface ShatterConfig {
 /**
  * Full configuration for skeleton appearance and behavior.
  * All fields are optional — defaults are applied from DEFAULT_SKELETON_CONFIG.
+ *
+ * Priority chain:
+ * skeletonConfig prop > SkeletonTheme > DEFAULT_SKELETON_CONFIG
  */
 export interface SkeletonConfig {
   /** Animation mode */
@@ -76,6 +79,12 @@ export interface SkeletonConfig {
     /** Fallback aspect ratio when image dimensions are unknown */
     aspectRatio?: number;
   };
+  /**
+   * Maximum number of bones rendered simultaneously when inside a FlatList.
+   * Limits memory and animation overhead for long lists.
+   * Default: 0 (unlimited)
+   */
+  maxBonesInList?: number;
 }
 
 /**
