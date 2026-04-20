@@ -1,28 +1,74 @@
 {
   "name": "skelter",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Stop writing skeleton loaders. Auto-generated from your component layout.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "keywords": [
+    "skeleton",
+    "loader",
+    "react-native",
+    "react",
+    "placeholder",
+    "shimmer",
+    "loading",
+    "animation",
+    "shatter",
+    "zero-config"
+  ],
+  "license": "MIT",
+  "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/J-Ben/skelter.git"
+    "url": "https://github.com/J-Ben/skelter"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/J-Ben/skelter/issues"
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "react-native": "dist/native/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native": "./dist/native/index.js",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
-  "homepage": "https://github.com/J-Ben/skelter#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts,.tsx",
+    "prepublishOnly": "npm run build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-native": ">=0.70.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-native": "^0.72.8",
-    "react": "^19.2.5",
-    "react-native": "^0.85.1",
-    "typescript": "^6.0.3"
+    "@changesets/cli": "^2.27.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/react-native": "^12.0.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^18.0.0",
+    "@types/react-native": "^0.73.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
   }
 }
