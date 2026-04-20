@@ -3,6 +3,7 @@ import type { SkeletonConfig } from './types';
 /**
  * Default configuration applied when no SkeletonTheme provider
  * is present and no skeletonConfig prop is passed.
+ *
  * Acts as the lowest priority in the config resolution chain:
  * skeletonConfig prop > SkeletonTheme > DEFAULT_SKELETON_CONFIG
  */
@@ -23,4 +24,6 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   imageConfig: {
     aspectRatio: 1,
   },
+  /** 0 = unlimited */
+  maxBonesInList: 0,
 };
