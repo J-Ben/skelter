@@ -1,0 +1,63 @@
+# Skelter Release — automatic publish to npm via Changesets
+#
+# Flow :
+# 1. Dev merges a PR with a changeset file
+# 2. This workflow detects the changeset
+# 3. Creates a "Version Packages" PR with bumped versions + CHANGELOG
+# 4. When that PR is merged → npm publish automatically
+#
+# Required secret : NPM_TOKEN (set in GitHub repo settings)
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full git history needed for changesets
+          fetch-depth: 0
+
+      - name: Setup Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build before publish
+        run: pnpm run build
+
+      - name: Create release PR or publish to npm
+        uses: changesets/action@v1
+        with:
+          # Command run when publishing
+          publish: pnpm run release
+          # Commit message for version bumps
+          commit: "chore: version packages"
+          # PR title
+          title: "chore: version packages"
+        env:
+          # GitHub token for creating PRs
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # npm token for publishing
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
