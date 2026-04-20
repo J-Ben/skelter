@@ -191,4 +191,4 @@ export function SkeletonTheme({
       {processedChildren}
     </SkeletonContext.Provider>
   );
-}npx tsc --noEmit
+}
