@@ -1,0 +1,24 @@
+{
+  "name": "skelter",
+  "version": "1.0.0",
+  "description": "Stop writing skeleton loaders. Auto-generated from your component layout.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/J-Ben/skelter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/J-Ben/skelter/issues"
+  },
+  "homepage": "https://github.com/J-Ben/skelter#readme",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
