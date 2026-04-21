@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, AccessibilityInfo, View } from 'react-native';
 import type { Bone, SkeletonConfig } from '../../core/types';
 import { createShatterAnimation } from './animations/shatter';
-import type { ShatterResult } from './animations/shatter';
+import type { ShatterSquare } from './animations/shatter';
 
 /**
  * Props for ShatterBone.
@@ -32,7 +32,6 @@ export const ShatterBone = React.memo(function ShatterBone({
   config,
 }: ShatterBoneProps) {
   const [reduceMotion, setReduceMotion] = useState(false);
-  const shatterRef = useRef<ShatterResult | null>(null);
 
   // Detect and track reduceMotion
   useEffect(() => {
@@ -44,26 +43,21 @@ export const ShatterBone = React.memo(function ShatterBone({
     return () => subscription.remove();
   }, []);
 
-  // Build and start shatter animation
+  // Création synchrone — le composant peut render immédiatement sans attendre useEffect
+  const shatter = useMemo(
+    () => createShatterAnimation(config, bone),
+    [bone, config]
+  );
+
+  // Start/stop uniquement selon reduceMotion
   useEffect(() => {
-    // Stop previous if any
-    shatterRef.current?.stop();
-
-    const shatter = createShatterAnimation(config, bone);
-    shatterRef.current = shatter;
-
     if (!reduceMotion) {
       shatter.start();
     }
-
     return () => {
       shatter.stop();
-      shatterRef.current = null;
     };
-  }, [bone, config, reduceMotion]);
-
-  const shatter = shatterRef.current;
-  if (!shatter) return null;
+  }, [shatter, reduceMotion]);
 
   return (
     <View
@@ -78,7 +72,7 @@ export const ShatterBone = React.memo(function ShatterBone({
         overflow: 'hidden',
       }}
     >
-      {shatter.squares.map((square, index) => (
+      {shatter.squares.map((square: ShatterSquare, index: number) => (
         <Animated.View
           key={`shatter-${index}`}
           style={{

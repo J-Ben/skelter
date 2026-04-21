@@ -33,7 +33,6 @@ export function createShiverAnimation(
   sharedValue?: Animated.Value
 ): ShiverAnimation {
   const animatedValue = sharedValue ?? new Animated.Value(0);
-  const secondaryValue = new Animated.Value(0);
   let animation: Animated.CompositeAnimation | null = null;
 
   const baseDuration = 800 / config.speed;
@@ -42,21 +41,12 @@ export function createShiverAnimation(
 
   const start = () => {
     animatedValue.setValue(0);
-    secondaryValue.setValue(0.5);
-
     animation = Animated.loop(
-      Animated.parallel([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: baseDuration,
-          useNativeDriver: true,
-        }),
-        Animated.timing(secondaryValue, {
-          toValue: 1.5,
-          duration: baseDuration,
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: baseDuration,
+        useNativeDriver: true,
+      })
     );
     animation.start();
   };
@@ -65,7 +55,6 @@ export function createShiverAnimation(
     animation?.stop();
     animation = null;
     animatedValue.setValue(0);
-    secondaryValue.setValue(0.5);
   };
 
   const translateX = animatedValue.interpolate({

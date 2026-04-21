@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useReducer } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import type { BoneTree, MeasuredLayout, ElementType } from '../../core/types';
 
@@ -59,7 +59,7 @@ export function useMeasureLayout(): MeasureLayoutResult {
   const childNodesRef = useRef<Map<string, MeasureNode>>(new Map());
   const boneTreeRef = useRef<BoneTree | null>(null);
   const isLayoutCapturedRef = useRef(false);
-  const forceUpdateRef = useRef<(() => void) | null>(null);
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
 
   /**
    * Rebuilds the BoneTree from captured layout data.
@@ -103,7 +103,7 @@ export function useMeasureLayout(): MeasureLayoutResult {
     };
 
     isLayoutCapturedRef.current = true;
-    forceUpdateRef.current?.();
+    forceUpdate();
   }, []);
 
   const onRootLayout = useCallback(

@@ -98,7 +98,6 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     config.direction,
     bone.width,
     animatedValue,
-    config,
   ]);
 
   const effectiveAnimation = reduceMotion ? 'none' : config.animation;

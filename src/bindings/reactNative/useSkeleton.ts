@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { generateBones } from '../../core/generateBones';
 import { DEFAULT_SKELETON_CONFIG } from '../../core/constants';
 import type { Bone, SkeletonConfig, BoneTree } from '../../core/types';
@@ -53,7 +53,7 @@ export function useSkeleton({
   const themeConfig = useContext(SkeletonContext);
 
   // Merge: local > theme > defaults
-  const mergedConfig: Required<SkeletonConfig> = {
+  const mergedConfig = useMemo((): Required<SkeletonConfig> => ({
     ...DEFAULT_SKELETON_CONFIG,
     ...themeConfig.config,
     ...config,
@@ -67,7 +67,7 @@ export function useSkeleton({
       ...themeConfig.config?.imageConfig,
       ...config?.imageConfig,
     },
-  };
+  }), [themeConfig.config, config]);
 
   /**
    * Cache awareness — tracks whether isLoading was true on first render.
