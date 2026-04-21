@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useContext,
+  createContext,
   ComponentType,
 } from 'react';
 import { View, Animated } from 'react-native';
@@ -19,21 +20,31 @@ import { SkeletonBone } from '../../adapters/native/SkeletonBone';
 const isSSR = typeof window === 'undefined';
 
 /**
+ * Resolved once at module level — require is deterministic so the result
+ * is stable for the lifetime of the app. A fallback context (always null)
+ * is used when the internal RN module is unavailable, ensuring useContext
+ * is always called unconditionally (Rules of Hooks compliant).
+ */
+const _FallbackContext = createContext<unknown>(null);
+let _VirtualizedListContext: React.Context<unknown> = _FallbackContext;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('react-native/Libraries/Lists/VirtualizedListContext');
+  if (mod?.VirtualizedListContext) {
+    _VirtualizedListContext = mod.VirtualizedListContext;
+  }
+} catch {
+  // Module unavailable — fallback context stays in use
+}
+
+/**
  * Detects if the component is rendered inside a FlatList / VirtualizedList.
  * Uses VirtualizedListContext set internally by React Native.
- * Returns false safely if the context is unavailable.
+ * Always calls useContext unconditionally — Rules of Hooks compliant.
  */
 function useIsInFlatList(): boolean {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { VirtualizedListContext } = require(
-      'react-native/Libraries/Lists/VirtualizedListContext'
-    );
-    const context = useContext(VirtualizedListContext);
-    return context !== null && context !== undefined;
-  } catch {
-    return false;
-  }
+  const context = useContext(_VirtualizedListContext);
+  return context !== null && context !== undefined;
 }
 
 /**
@@ -144,15 +155,12 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
    * With 20+ items in a list this causes severe performance issues.
    * Fallback to pulse which uses a single shared Animated.Value.
    */
-  const effectiveConfig: SkeletonConfig | undefined = isInFlatList
-    ? {
-      ...skeletonConfig,
-      animation:
-        skeletonConfig?.animation === 'shatter'
-          ? 'pulse'
-          : skeletonConfig?.animation,
-    }
-    : skeletonConfig;
+  // En FlatList, remplace shatter par pulse uniquement si l'utilisateur avait
+  // explicitement choisi shatter — ne touche pas aux autres animations ni aux défauts.
+  const effectiveConfig: SkeletonConfig | undefined =
+    isInFlatList && skeletonConfig?.animation === 'shatter'
+      ? { ...skeletonConfig, animation: 'pulse' as const }
+      : skeletonConfig;
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
     hasSkeleton: true,

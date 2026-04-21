@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { generateBones } from '../../core/generateBones';
 import { DEFAULT_SKELETON_CONFIG } from '../../core/constants';
 import type { Bone, SkeletonConfig, BoneTree } from '../../core/types';
@@ -52,7 +52,7 @@ export function useSkeleton({
 }: UseSkeletonArgs): UseSkeletonResult {
   const themeConfig = useContext(SkeletonContext);
 
-  const mergedConfig: Required<SkeletonConfig> = {
+  const mergedConfig = useMemo((): Required<SkeletonConfig> => ({
     ...DEFAULT_SKELETON_CONFIG,
     ...themeConfig.config,
     ...config,
@@ -66,7 +66,7 @@ export function useSkeleton({
       ...themeConfig.config?.imageConfig,
       ...config?.imageConfig,
     },
-  };
+  }), [themeConfig.config, config]);
 
   /**
    * Cache awareness — if isLoading is false on mount,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, CSSProperties } from 'react';
+import React, { useEffect, useMemo, useState, CSSProperties } from 'react';
 import type { Bone, SkeletonConfig } from '../../core/types';
 import { createPulseAnimation } from './animations/pulse';
 import { createWaveAnimation } from './animations/wave';
@@ -64,9 +64,15 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     overflow: 'hidden',
   };
 
+  const shatterSquares = useMemo(
+    () => effectiveAnimation === 'shatter' ? createShatterStyles(config, bone) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveAnimation, bone, config]
+  );
+
   // Shatter — renders a grid of squares
-  if (effectiveAnimation === 'shatter') {
-    const squares = createShatterStyles(config, bone);
+  if (effectiveAnimation === 'shatter' && shatterSquares) {
+    const squares = shatterSquares;
     return (
       <div
         aria-hidden="true"
