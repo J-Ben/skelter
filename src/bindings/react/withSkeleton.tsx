@@ -87,7 +87,7 @@ export function withSkeleton<P extends object>(
   });
 
   WrappedComponent.displayName = `withSkeleton(${displayName})`;
-  return WrappedComponent;
+  return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
 
 /**
