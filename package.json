@@ -1,6 +1,6 @@
 {
   "name": "skelter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Stop writing skeleton loaders. Auto-generated from your component layout.",
   "keywords": [
     "skeleton",
