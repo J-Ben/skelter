@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import type { CSSProperties } from 'react';
 import type { Bone, SkeletonConfig } from '../../../core/types';
 
@@ -70,7 +71,7 @@ export function createShatterStyles(
   const squareWidth = bone.width / cols;
   const rows = Math.max(1, Math.round(bone.height / squareWidth));
   const squareHeight = bone.height / rows;
-  const baseDuration = 600 / config.speed;
+  const baseDuration = 600 / resolveSpeed(config.speed);
   const animationName = `skelter-shatter-${Math.round(baseDuration)}`;
 
   const keyframes = `

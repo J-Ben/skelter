@@ -10,6 +10,7 @@ export type { SkeletonContextValue } from './context/SkeletonContext';
 export type {
   SkeletonConfig,
   SkeletonAnimation,
+  AnimationSpeed,
   ShatterConfig,
   ShatterFadeStyle,
   Bone,
@@ -17,4 +18,4 @@ export type {
   ElementType,
   MeasuredLayout,
 } from './core/types';
-export { DEFAULT_SKELETON_CONFIG } from './core/constants';
+export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from './core/constants';
