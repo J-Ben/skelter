@@ -1,36 +1,34 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Animated, AccessibilityInfo } from 'react-native';
 import type { Bone, SkeletonConfig } from '../../core/types';
 import { createPulseAnimation } from './animations/pulse';
 import { createWaveAnimation } from './animations/wave';
 import { createShiverAnimation } from './animations/shiver';
+import { GradientShimmer } from './GradientShimmer';
 
-/**
- * Props for SkeletonBone.
- */
 export interface SkeletonBoneProps {
-  /** The bone to render */
   bone: Bone;
-  /** Merged skeleton configuration */
   config: Required<SkeletonConfig>;
   /**
    * Shared Animated.Value from withSkeleton.
-   * All bones in the same component receive the same value
-   * to ensure perfectly synchronized animations.
+   * All bones in the same component share this value for perfect sync.
+   * ShatterBone manages its own values — this prop is not used there.
    */
   animatedValue: Animated.Value;
 }
 
 /**
- * Renders a single skeleton placeholder bone with the appropriate animation.
+ * Renders a single skeleton placeholder bone.
  *
- * - Delegates animation to the correct module based on config.animation
- * - Shares the Animated.Value from withSkeleton for perfect sync
- * - Respects AccessibilityInfo.isReduceMotionEnabled — falls back to none
- * - Hidden from screen readers via accessibilityElementsHidden
- * - Cleans up animation on unmount — zero memory leaks
+ * Handles pulse, wave, shiver, and none.
+ * shatter is routed to ShatterBone upstream (in withSkeleton).
  *
- * @param props - SkeletonBoneProps
+ * For wave/shiver: the bone is static; a LinearGradient overlay translates
+ * across it inside overflow:hidden, creating the shimmer effect.
+ * Requires expo-linear-gradient or react-native-linear-gradient (optional peer).
+ * If absent, the bone shows solid color (same as 0.1.x behaviour).
+ *
+ * For pulse: opacity oscillates on the shared animatedValue.
  */
 export const SkeletonBone = React.memo(function SkeletonBone({
   bone,
@@ -38,77 +36,59 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   animatedValue,
 }: SkeletonBoneProps) {
   const [reduceMotion, setReduceMotion] = useState(false);
-  const stopRef = useRef<(() => void) | null>(null);
-  const translateXRef = useRef<Animated.AnimatedInterpolation<number> | null>(null);
 
-  // Detect reduceMotion on mount and listen for changes
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion
-    );
-
-    return () => subscription.remove();
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => sub.remove();
   }, []);
 
-  // Start animation based on config.animation
+  const effectiveAnimation = reduceMotion ? 'none' : config.animation;
+
+  // --- Shimmer interpolation (wave / shiver) ---
+  // Computed synchronously so it is available on the very first render.
+  // The animation loop that drives animatedValue is started in the effect below.
+  const shimmerTranslateX = useMemo(() => {
+    if (effectiveAnimation !== 'wave' && effectiveAnimation !== 'shiver') return null;
+    const isRtl = config.direction === 'rtl';
+    // wave: amplitude = boneWidth (sweeps exactly one bone-width left to right)
+    // shiver: amplitude = 1.5× (more intense, faster)
+    const amplitude = effectiveAnimation === 'shiver' ? bone.width * 1.5 : bone.width;
+    return animatedValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: isRtl ? [amplitude, -amplitude] : [-amplitude, amplitude],
+    });
+  }, [effectiveAnimation, config.direction, bone.width, animatedValue]);
+
+  // --- Animation lifecycle ---
   useEffect(() => {
-    const effectiveAnimation = reduceMotion ? 'none' : config.animation;
-
-    // Stop any previous animation
-    stopRef.current?.();
-    stopRef.current = null;
-    translateXRef.current = null;
-
     if (effectiveAnimation === 'none') return;
 
-    if (effectiveAnimation === 'pulse' || effectiveAnimation === 'shatter') {
-      // shatter falls back to pulse until Prompt 4
+    let stop: (() => void) | null = null;
+
+    if (effectiveAnimation === 'pulse') {
       const anim = createPulseAnimation(config, animatedValue);
       anim.start();
-      stopRef.current = anim.stop;
+      stop = anim.stop;
     } else if (effectiveAnimation === 'wave') {
       const anim = createWaveAnimation(config, bone.width, animatedValue);
       anim.start();
-      stopRef.current = anim.stop;
-      translateXRef.current =
-        (animatedValue as Animated.Value & {
-          translateX?: Animated.AnimatedInterpolation<number>;
-        }).translateX ?? null;
+      stop = anim.stop;
     } else if (effectiveAnimation === 'shiver') {
       const anim = createShiverAnimation(config, bone.width, animatedValue);
       anim.start();
-      stopRef.current = anim.stop;
-      translateXRef.current =
-        (animatedValue as Animated.Value & {
-          translateX?: Animated.AnimatedInterpolation<number>;
-        }).translateX ?? null;
+      stop = anim.stop;
     }
+    // shatter is never handled here — withSkeleton routes it to ShatterBone
 
-    return () => {
-      stopRef.current?.();
-      stopRef.current = null;
-    };
-  }, [
-    reduceMotion,
-    config.animation,
-    config.speed,
-    config.direction,
-    bone.width,
-    animatedValue,
-  ]);
+    return () => stop?.();
+  }, [effectiveAnimation, config.speed, config.direction, bone.width, animatedValue]);
 
-  const effectiveAnimation = reduceMotion ? 'none' : config.animation;
-  const isPulse =
-    effectiveAnimation === 'pulse' ||
-    effectiveAnimation === 'shatter' ||
-    effectiveAnimation === 'none';
+  const isShimmer = shimmerTranslateX !== null;
+  const isPulse = effectiveAnimation === 'pulse';
 
-  const animatedStyle = isPulse
-    ? { opacity: effectiveAnimation === 'none' ? 1 : animatedValue }
-    : { transform: [{ translateX: translateXRef.current ?? 0 }] };
+  // Pulse: animate outer opacity. Shimmer: outer is static, gradient translates inside.
+  const outerAnimatedStyle = isPulse ? { opacity: animatedValue as unknown as number } : {};
 
   return (
     <Animated.View
@@ -125,8 +105,17 @@ export const SkeletonBone = React.memo(function SkeletonBone({
           backgroundColor: config.color,
           overflow: 'hidden',
         },
-        animatedStyle,
+        outerAnimatedStyle,
       ]}
-    />
+    >
+      {isShimmer && (
+        <GradientShimmer
+          color={config.color}
+          highlightColor={config.highlightColor}
+          translateX={shimmerTranslateX}
+          boneWidth={bone.width}
+        />
+      )}
+    </Animated.View>
   );
 });
