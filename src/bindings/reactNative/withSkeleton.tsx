@@ -2,13 +2,15 @@ import React, {
   memo,
   useRef,
   useState,
+  useEffect,
   useCallback,
   useContext,
   createContext,
   ComponentType,
 } from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, AccessibilityInfo } from 'react-native';
 import type { SkeletonConfig } from '../../core/types';
+import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
 import { SkeletonBone } from '../../adapters/native/SkeletonBone';
@@ -72,6 +74,7 @@ export interface SkeletonProps {
  * Features:
  * - Auto-generates skeleton from real component layout via onLayout
  * - Single shared Animated.Value across all bones — perfect sync
+ * - Animation loop managed here, not per-bone — no Animated.Value conflicts
  * - FlatList aware — disables shatter, limits bones in lists
  * - SSR safe — disables measurement on server, zero crashes
  * - Cache aware — no skeleton flash when data is already present
@@ -81,15 +84,6 @@ export interface SkeletonProps {
  *
  * @param Component - The React Native component to wrap
  * @returns A new component with skeleton loading capability
- *
- * @example
- * export default withSkeleton(ArticleCard)
- *
- * // Usage
- * <ArticleCard hasSkeleton isLoading={isLoading} />
- *
- * // Shorthand
- * <ArticleCard isLoadingSkeleton />
  */
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>
@@ -130,6 +124,7 @@ export function withSkeleton<P extends object>(
   WrappedComponent.displayName = `withSkeleton(${displayName})`;
   return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
+
 /**
  * Internal renderer that handles layout capture and skeleton display.
  * Separated from withSkeleton to keep hook usage clean and predictable.
@@ -150,14 +145,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const isInFlatList = useIsInFlatList();
   const { boneTree, onRootLayout, isLayoutCaptured } = useMeasureLayout();
 
-  /**
-   * FlatList optimization — override animation when inside a VirtualizedList.
-   * Shatter creates one Animated.Value per square per bone.
-   * With 20+ items in a list this causes severe performance issues.
-   * Fallback to pulse which uses a single shared Animated.Value.
-   */
-  // En FlatList, remplace shatter par pulse uniquement si l'utilisateur avait
-  // explicitement choisi shatter — ne touche pas aux autres animations ni aux défauts.
+  // FlatList: shatter → pulse (too expensive per-item)
   const effectiveConfig: SkeletonConfig | undefined =
     isInFlatList && skeletonConfig?.animation === 'shatter'
       ? { ...skeletonConfig, animation: 'pulse' as const }
@@ -170,28 +158,72 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     boneTree,
   });
 
-  /**
-   * Limit bones in FlatList if maxBonesInList is configured.
-   * Prevents excessive simultaneous animations in long lists.
-   * 0 = unlimited (default)
-   */
   const visibleBones =
     isInFlatList && mergedConfig.maxBonesInList > 0
       ? bones.slice(0, mergedConfig.maxBonesInList)
       : bones;
 
   /**
-   * Single Animated.Value shared across ALL bones of this component.
-   * Ensures every bone animates in perfect lockstep —
-   * pulse, wave and shiver all read from this same value.
-   * Exception: ShatterBone manages its own values internally.
+   * Single Animated.Value shared across ALL non-shatter bones.
+   * Initialized to 0 — the animation loop below sets the right
+   * starting value for each animation type before it starts.
+   *
+   * ShatterBone manages its own Animated.Values per square internally.
    */
-  const animatedValue = useRef(new Animated.Value(0.3)).current;
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
-  const [containerDimensions, setContainerDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
+  // Reduce motion — stop all animations if enabled
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => sub.remove();
+  }, []);
+
+  /**
+   * Single animation loop driving animatedValue for ALL bones.
+   *
+   * Previously each SkeletonBone started its own loop on the shared value,
+   * causing N competing Animated.loop calls (one per bone) which made
+   * wave/shiver freeze on the native side.
+   *
+   * Now: one loop here, bones just interpolate/read animatedValue.
+   */
+  useEffect(() => {
+    const animation = mergedConfig.animation;
+
+    // shatter and none don't need a shared loop
+    if (!isSkeletonVisible || reduceMotion || animation === 'none' || animation === 'shatter') {
+      animatedValue.stopAnimation();
+      return;
+    }
+
+    const speed = resolveSpeed(mergedConfig.speed);
+    let anim: Animated.CompositeAnimation;
+
+    if (animation === 'pulse') {
+      const dur = 1000 / speed;
+      animatedValue.setValue(0.3);
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, { toValue: 1.0, duration: dur / 2, useNativeDriver: true }),
+          Animated.timing(animatedValue, { toValue: 0.3, duration: dur / 2, useNativeDriver: true }),
+        ])
+      );
+    } else {
+      // wave or shiver — simple 0→1 loop; each bone interpolates its own translateX range
+      const dur = (animation === 'shiver' ? 800 : 1500) / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.timing(animatedValue, { toValue: 1, duration: dur, useNativeDriver: true })
+      );
+    }
+
+    anim.start();
+    return () => anim.stop();
+  }, [isSkeletonVisible, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
+
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
 
   const onContainerLayout = useCallback(
     (event: { nativeEvent: { layout: { width: number; height: number } } }) => {
@@ -206,14 +238,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   return (
     <View onLayout={onContainerLayout}>
       {/*
-       * Invisible first render — captures the real component layout.
-       *
-       * Rendered with opacity: 0 and pointerEvents: none so it is
-       * completely invisible and non-interactive.
-       * Position absolute prevents it from affecting the layout flow.
-       *
-       * SSR safe — skipped entirely on the server.
-       * Once layout is captured this render is removed from the tree.
+       * Invisible warmup render — captures component dimensions.
+       * left:0 right:0 ensures flex/percentage widths resolve correctly.
+       * Removed from tree once layout is captured.
        */}
       {!isSSR && !isLayoutCaptured && (
         <View
@@ -225,23 +252,15 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {/* Skeleton overlay — visible while isLoading is true */}
       {isSkeletonVisible && isLayoutCaptured && (
         <View
-          style={{
-            width: containerDimensions.width,
-            height: containerDimensions.height,
-          }}
+          style={{ width: containerDimensions.width, height: containerDimensions.height }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
           {visibleBones.map((bone, index) =>
             mergedConfig.animation === 'shatter' ? (
-              <ShatterBone
-                key={`bone-${index}`}
-                bone={bone}
-                config={mergedConfig}
-              />
+              <ShatterBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
             ) : (
               <SkeletonBone
                 key={`bone-${index}`}
@@ -254,7 +273,6 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {/* Real component — shown once loading is complete */}
       {(!isSkeletonVisible || isSSR) && (
         <Component {...componentProps} />
       )}

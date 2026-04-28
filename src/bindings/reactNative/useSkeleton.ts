@@ -4,45 +4,31 @@ import { DEFAULT_SKELETON_CONFIG } from '../../core/constants';
 import type { Bone, SkeletonConfig, BoneTree } from '../../core/types';
 import { SkeletonContext } from '../../context/SkeletonContext';
 
-/**
- * Arguments passed to useSkeleton.
- */
 export interface UseSkeletonArgs {
-  /** Whether the skeleton feature is active on this component */
   hasSkeleton: boolean;
-  /** Whether the component is currently loading */
   isLoading: boolean;
-  /** Local config — highest priority in the merge chain */
   config?: SkeletonConfig;
-  /** The measured component tree */
   boneTree: BoneTree | null;
 }
 
-/**
- * Result returned by useSkeleton.
- */
 export interface UseSkeletonResult {
-  /** Merged configuration — local > theme > defaults */
   mergedConfig: Required<SkeletonConfig>;
-  /** Whether the skeleton should be visible right now */
   isSkeletonVisible: boolean;
-  /** Flat array of bones ready for rendering */
   bones: Bone[];
 }
 
 /**
  * Core hook for skeleton state management.
  *
- * Handles:
- * - Config merging: local config > SkeletonTheme > DEFAULT_SKELETON_CONFIG
- * - minDuration: keeps skeleton visible for at least N ms
- * - disabled: never show skeleton if true
- * - Cache awareness: if isLoading is false on first render,
- *   data was already present (React Query cache, Redux, MMKV, etc.)
- *   — skeleton is never shown to avoid a flash
+ * Config merging: local config > SkeletonTheme > DEFAULT_SKELETON_CONFIG
+ * minDuration: keeps skeleton visible for at least N ms
+ * disabled: never show skeleton if true
  *
- * @param args - Skeleton state arguments
- * @returns Merged config, visibility state, and bones array
+ * Cache awareness (fixed in 0.2.1):
+ * If isLoading is false on mount AND never transitions to true, the component
+ * had data in cache — no skeleton flash. But if isLoading later becomes true
+ * (user triggers a reload), the skeleton DOES show. This fixes the one-shot
+ * bug where a key-remount with isLoading=false permanently suppressed the skeleton.
  */
 export function useSkeleton({
   hasSkeleton,
@@ -52,7 +38,6 @@ export function useSkeleton({
 }: UseSkeletonArgs): UseSkeletonResult {
   const themeConfig = useContext(SkeletonContext);
 
-  // Merge: local > theme > defaults
   const mergedConfig = useMemo((): Required<SkeletonConfig> => ({
     ...DEFAULT_SKELETON_CONFIG,
     ...themeConfig.config,
@@ -70,26 +55,26 @@ export function useSkeleton({
   }), [themeConfig.config, config]);
 
   /**
-   * Cache awareness — tracks whether isLoading was true on first render.
+   * everSeenLoading — true once isLoading has been true at least once.
    *
-   * If isLoading is false on mount, data was already available
-   * (e.g. from React Query cache, Redux, MMKV, etc.).
-   * In that case we never show the skeleton — no flash, no layout shift.
-   *
-   * If isLoading is true on mount, we show the skeleton normally
-   * and hide it when isLoading transitions to false.
+   * Cache awareness logic:
+   * - Mount with isLoading=false → everSeenLoading stays false →
+   *   skeleton suppressed (data was in cache, avoid flash). ✓
+   * - Mount with isLoading=true  → everSeenLoading becomes true →
+   *   skeleton shows normally. ✓
+   * - Mount with isLoading=false, then isLoading=true later (user reload) →
+   *   everSeenLoading becomes true → skeleton shows. ✓ (bug fixed vs 0.2.0)
    */
-  const wasLoadingOnMountRef = useRef<boolean | null>(null);
-  if (wasLoadingOnMountRef.current === null) {
-    wasLoadingOnMountRef.current = isLoading;
-  }
+  const everSeenLoadingRef = useRef(false);
 
+  // Show skeleton immediately if loading on first render
   const [isSkeletonVisible, setIsSkeletonVisible] = useState<boolean>(() => {
-    if (!hasSkeleton) return false;
-    if (mergedConfig.disabled) return false;
-    // Cache aware — data was already present on mount, never flash skeleton
-    if (!wasLoadingOnMountRef.current) return false;
-    return isLoading;
+    if (!hasSkeleton || mergedConfig.disabled) return false;
+    if (isLoading) {
+      everSeenLoadingRef.current = true;
+      return true;
+    }
+    return false;
   });
 
   const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,24 +86,23 @@ export function useSkeleton({
       return;
     }
 
-    // Cache aware — if data was present on mount, never show skeleton
-    if (!wasLoadingOnMountRef.current) {
-      setIsSkeletonVisible(false);
-      return;
-    }
-
     if (isLoading) {
+      everSeenLoadingRef.current = true;
       loadingStartTimeRef.current = Date.now();
       setIsSkeletonVisible(true);
     } else {
+      if (!everSeenLoadingRef.current) {
+        // isLoading has never been true — data was in cache, skip skeleton
+        setIsSkeletonVisible(false);
+        return;
+      }
+
       const elapsed = loadingStartTimeRef.current
         ? Date.now() - loadingStartTimeRef.current
         : 0;
       const remaining = mergedConfig.minDuration - elapsed;
 
       if (remaining > 0) {
-        // Keep skeleton visible for remaining minDuration ms
-        // Prevents jarring flash when loading is very fast
         minDurationTimerRef.current = setTimeout(() => {
           setIsSkeletonVisible(false);
         }, remaining);
