@@ -10,9 +10,9 @@
 [![React Native](https://img.shields.io/badge/React%20Native-0.70+-61DAFB)](https://reactnative.dev/)
 [![React](https://img.shields.io/badge/React-17+-61DAFB)](https://react.dev/)
 
-Skelter wraps your React Native component and generates a skeleton placeholder from its measured dimensions. Two props. No skeleton written by hand.
+Skelter wraps your React Native component and generates a skeleton placeholder from its actual layout — one bone per element, zero config required. Two props. No skeleton written by hand.
 
-> **v0.2.0** — shatter is now real, wave/shiver have a gradient shimmer, flex-based components measure correctly. See [CHANGELOG](./CHANGELOG.md).
+> **v0.3.0** — per-element bones by default. One bone per View / Image / Text inside your component, each at the right position, size, and corner radius. See [CHANGELOG](./CHANGELOG.md).
 
 ---
 
@@ -67,9 +67,7 @@ const ArticleList = () => {
 }
 ```
 
-Skelter measures the dimensions of your component at runtime and renders a skeleton block that fills the same area. When your layout changes size, the skeleton follows.
-
-> **What the skeleton looks like:** a single placeholder block the size of the component root. Per-element measurement (separate blocks for image, title, description…) is on the roadmap — see [Limitations](#limitations).
+Skelter renders the component invisibly, walks the React Fiber tree, and measures every native element individually. The skeleton is a set of positioned blocks — one per View, Image, and Text — at the exact position, size, and corner radius of each element. When your layout changes, the skeleton follows automatically.
 
 ---
 
@@ -118,7 +116,11 @@ const ArticleCard = ({ article }) => (
   </View>
 )
 
+// Default: one bone per element, auto-measured from Fiber tree
 export default withSkeleton(ArticleCard)
+
+// v0.2 compat: single root block
+// export default withSkeleton(ArticleCard, { measureStrategy: 'root-only' })
 ```
 
 ### Step 3 — Use it anywhere
@@ -237,8 +239,8 @@ Then anywhere in your app:
 | `animation` | `'pulse' \| 'wave' \| 'shiver' \| 'shatter' \| 'none'` | `'pulse'` | Animation mode |
 | `color` | `string` | `'#E0E0E0'` | Base placeholder color |
 | `highlightColor` | `string` | `'#F5F5F5'` | Highlight color for wave/shiver shimmer |
-| `speed` | `number` | `1.0` | Speed multiplier — 2.0 is twice as fast |
-| `borderRadius` | `number` | `4` | Corner radius — applies to all bones globally |
+| `speed` | `'slow' \| 'normal' \| 'rapid' \| number` | `'normal'` | Animation speed — named preset or custom multiplier (2.0 = twice as fast) |
+| `borderRadius` | `number` | `4` | Fallback corner radius — used when element style has no borderRadius |
 | `direction` | `'ltr' \| 'rtl'` | `'ltr'` | Shimmer direction |
 | `minDuration` | `number` | `0` | Minimum ms the skeleton stays visible |
 | `disabled` | `boolean` | `false` | Never show skeleton if true |
@@ -246,7 +248,36 @@ Then anywhere in your app:
 | `shatterConfig` | `ShatterConfig` | see below | Shatter animation config |
 | `imageConfig` | `{ aspectRatio: number }` | `{ aspectRatio: 1 }` | Image fallback dimensions |
 
-> `borderRadius` is a single global value. Per-element border radius (e.g. 12 for images, 4 for text) is not supported yet — see [Limitations](#limitations).
+Since v0.3, `borderRadius` is read from each element's `StyleSheet` style automatically. `config.borderRadius` acts as the fallback when the element has no explicit radius.
+
+### `withSkeleton` options
+
+Second argument — `withSkeleton(Component, options?)`:
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `'auto'` walks the Fiber tree (one bone per element); `'root-only'` restores v0.2 single-block behaviour |
+| `maxDepth` | `number` | `8` | Max depth of the Fiber tree traversal |
+| `exclude` | `string[]` | `[]` | Component displayNames excluded from the fiber walk (produce no bones) |
+
+```tsx
+// Exclude a heavy third-party widget from measurement
+export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
+
+// Opt out of fiber walk entirely
+export default withSkeleton(Screen, { measureStrategy: 'root-only' })
+```
+
+### `registerSkeletonLeaf`
+
+Registers additional component names as skeleton leaf elements. Use this for custom image libraries that are not detected automatically.
+
+```tsx
+import { registerSkeletonLeaf } from 'skelter'
+
+// Call once, before your first render
+registerSkeletonLeaf('FastImage', 'ExpoImage')
+```
 
 ### `ShatterConfig`
 
@@ -283,15 +314,13 @@ Config priority chain: `skeletonConfig` prop > `SkeletonTheme` > defaults.
 
 These are real constraints in the current version. They are listed here so you can make an informed decision before adopting the library.
 
-### Skeleton shape is one block per component
+### Fiber walk depends on React internals
 
-The skeleton is a **single rectangle** the size of the component root — not a separate block per image, text, or view inside. If your `ArticleCard` is 200×120, the skeleton is a 200×120 block regardless of internal structure.
+Per-element measurement reads `_reactInternals` / `_reactFiber` from the native View instance. These are undocumented React internals. They have been stable across React 17–18, but could change in a future React version. If the walk fails (hermetic bundles, test runners, future React), Skelter falls back to a single root bone — same as v0.2.
 
-Per-element measurement (a separate bone per child element) is the intended final state and is on the roadmap.
+### Custom image components need manual registration
 
-### borderRadius is global
-
-`config.borderRadius` applies the same radius to every bone. There is no way to give the image bone a radius of 12 and the text bone a radius of 4. Per-element border radius is roadmap.
+Third-party image libraries (`FastImage`, `ExpoImage`, etc.) are not in Skelter's built-in leaf list. Call `registerSkeletonLeaf('FastImage')` once at app startup, or they will be invisible to the fiber walker.
 
 ### wave and shiver need a gradient peer
 
@@ -324,26 +353,22 @@ All animations use React Native's `Animated` API. For long lists or low-end devi
 | RTL support | ✅ | ❌ | ❌ | ✅ |
 | Cache aware | ✅ | ❌ | ❌ | ❌ |
 
-¹ One block per component root. Per-element breakdown is roadmap.
+¹ One bone per element by default (v0.3+). `measureStrategy: 'root-only'` falls back to one block per component root.
 ² Via `cloneElement` injection — may generate warnings on some third-party components.
 
 ---
 
 ## Roadmap
 
-### v0.2 — Current
+### v0.3 — Current
 
-- ✅ `pulse`, `wave`, `shiver`, `shatter` animations
-- ✅ shatter: real grid fragmentation with stagger and fadeStyle
-- ✅ wave/shiver: LinearGradient shimmer (optional peer)
-- ✅ FlatList optimization, SSR safe, cache aware, RTL
-- ✅ Auto mode via `SkeletonTheme`
-
-### v0.3 — Next
-
-- Per-element measurement — separate bone per image / text / view inside the component
-- Per-element `borderRadius` — reads from the child's StyleSheet
-- `react-native-reanimated` v3 worklets — shimmer on the UI thread
+- ✅ Per-element bones — one bone per View / Image / Text, auto-measured from Fiber tree
+- ✅ Per-element `borderRadius` — read from each element's StyleSheet
+- ✅ `withSkeleton(Component, options?)` — `measureStrategy`, `maxDepth`, `exclude`
+- ✅ `registerSkeletonLeaf` — add custom image components to the leaf registry
+- ✅ FlatList auto-detection — switches to root-only inside VirtualizedList
+- ✅ `pulse`, `wave`, `shiver`, `shatter` animations, `AnimationSpeed` presets
+- ✅ FlatList optimization, SSR safe, cache aware, RTL, accessibility (reduce motion)
 
 ### v1 — Future
 

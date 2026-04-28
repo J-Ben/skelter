@@ -1,5 +1,46 @@
 # skelter
 
+## 0.3.0
+
+### New features
+
+- **Per-element bones** — `withSkeleton(Component)` now generates one bone per native leaf element (View, Text, Image…) instead of a single block the size of the component root. Each bone precisely mirrors the shape, position, and `borderRadius` of the original element. Zero config change required — the default `measureStrategy: 'auto'` applies automatically.
+
+- **`withSkeleton` second argument** — `withSkeleton(Component, options?)` accepts an optional `WithSkeletonOptions` object:
+  - `measureStrategy: 'auto' | 'root-only'` — `'auto'` (default) enables per-element fiber walk; `'root-only'` restores v0.2 single-block behaviour.
+  - `maxDepth: number` — max depth of the Fiber tree traversal (default: 8). Guards against runaway walks on deeply nested trees.
+  - `exclude: string[]` — component displayNames to skip during traversal. Each excluded component produces no bones and is not traversed further. Useful for third-party widgets (`['MapView', 'VideoPlayer']`).
+
+- **`registerSkeletonLeaf(...names)`** — registers additional component names as skeleton leaf elements. Useful for custom image libraries (`registerSkeletonLeaf('FastImage', 'ExpoImage')`).
+
+- **React Fiber tree walker** (`fiberWalker.ts`) — internal module that reads `_reactInternals` / `_reactFiber` fiber keys from the native View instance, walks the tree depth-first, collects host component nodes, and measures each with `stateNode.measure()`. Compatible with both Old Architecture (UIManager) and New Architecture (Fabric/JSI). Falls back to single root bone when fibers are inaccessible (test runners, hermetic bundles).
+
+- **FlatList auto-detect** — components rendered inside a FlatList are automatically switched to `root-only` mode (via `VirtualizedListContext`). Per-element fiber walks on 50+ list items are expensive; the root-only fallback keeps scroll performance smooth. The `shatter` animation is also silently replaced with `pulse` inside lists.
+
+- **`MeasureStrategy` and `WithSkeletonOptions` types** exported from the package.
+
+### Internal
+
+- `useMeasureLayout` refactored into `buildAutoHook` (fiber-based) and `buildRootOnlyHook` (v0.2 compat). Strategy selected once at mount and never changes.
+- `SkeletonRenderer` receives `hocOptions` and `warmupRef`. The invisible warmup View is now `ref`-attached so the fiber walker can reach the React tree from the native instance after `onLayout` fires.
+- `generateBones` propagates `borderRadius` from measured fiber styles instead of hardcoding `0`.
+
+### Migration
+
+No breaking API changes. All existing `withSkeleton(Component)` calls work unchanged — they just produce richer skeletons automatically.
+
+To opt out of per-element measurement (e.g. if your component's Fiber internals are not accessible):
+
+```tsx
+export default withSkeleton(MyComponent, { measureStrategy: 'root-only' })
+```
+
+To exclude a heavy third-party widget from the fiber walk:
+
+```tsx
+export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
+```
+
 ## 0.2.1
 
 ### Bug fixes
