@@ -121,6 +121,45 @@ export interface MeasuredLayout {
   height: number;
   /** Type of the original UI element */
   type: ElementType;
+  /** Corner radius read from StyleSheet.flatten(style).borderRadius */
+  borderRadius?: number;
+}
+
+/**
+ * Measurement strategy for per-element skeleton generation.
+ *
+ * 'auto'      — walks the React Fiber tree after the warmup render and measures
+ *               each native element individually. One bone per leaf element.
+ *               This is the v0.3 default.
+ *
+ * 'root-only' — measures only the root container. Produces a single block
+ *               the size of the component. Identical to v0.2 behaviour.
+ */
+export type MeasureStrategy = 'auto' | 'root-only';
+
+/**
+ * Options for withSkeleton (second argument).
+ * All fields are optional — sensible defaults are applied.
+ */
+export interface WithSkeletonOptions {
+  /**
+   * 'auto'      → one bone per leaf element (default)
+   * 'root-only' → single root block (v0.2 compat)
+   */
+  measureStrategy?: MeasureStrategy;
+  /**
+   * Maximum depth of the fiber tree walk.
+   * Prevents runaway traversal on deeply nested components.
+   * Default: 8
+   */
+  maxDepth?: number;
+  /**
+   * Component displayNames excluded from bone generation.
+   * Excluded components still appear in the tree but produce a
+   * single encompassing bone instead of being traversed.
+   * Example: ['MapView', 'VideoPlayer']
+   */
+  exclude?: string[];
 }
 
 /**
