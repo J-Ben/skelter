@@ -1,5 +1,6 @@
 import { Animated } from 'react-native';
 import type { Bone, SkeletonConfig } from '../../../core/types';
+import { resolveSpeed } from '../../../core/constants';
 
 /**
  * A single square in the shatter grid.
@@ -125,7 +126,7 @@ export function createShatterAnimation(
   const squareWidth = bone.width / cols;
   const rows = Math.max(1, Math.round(bone.height / squareWidth));
   const squareHeight = bone.height / rows;
-  const baseDuration = 600 / config.speed;
+  const baseDuration = 600 / resolveSpeed(config.speed);
 
   // Build the grid of squares
   const squares: ShatterSquare[] = [];
