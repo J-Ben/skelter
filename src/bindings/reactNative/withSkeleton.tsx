@@ -12,6 +12,7 @@ import type { SkeletonConfig } from '../../core/types';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
 import { SkeletonBone } from '../../adapters/native/SkeletonBone';
+import { ShatterBone } from '../../adapters/native/ShatterBone';
 
 /**
  * SSR detection — true when running on the server (Next.js, Expo SSR).
@@ -216,7 +217,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
        */}
       {!isSSR && !isLayoutCaptured && (
         <View
-          style={{ position: 'absolute', opacity: 0 }}
+          style={{ position: 'absolute', left: 0, right: 0, opacity: 0 }}
           pointerEvents="none"
           onLayout={onRootLayout}
         >
@@ -234,14 +235,22 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {visibleBones.map((bone, index) => (
-            <SkeletonBone
-              key={`bone-${index}`}
-              bone={bone}
-              config={mergedConfig}
-              animatedValue={animatedValue}
-            />
-          ))}
+          {visibleBones.map((bone, index) =>
+            mergedConfig.animation === 'shatter' ? (
+              <ShatterBone
+                key={`bone-${index}`}
+                bone={bone}
+                config={mergedConfig}
+              />
+            ) : (
+              <SkeletonBone
+                key={`bone-${index}`}
+                bone={bone}
+                config={mergedConfig}
+                animatedValue={animatedValue}
+              />
+            )
+          )}
         </View>
       )}
 
