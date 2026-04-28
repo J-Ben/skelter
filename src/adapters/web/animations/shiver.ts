@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import type { CSSProperties } from 'react';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -36,7 +37,7 @@ function injectKeyframes(animationName: string, keyframes: string): void {
 export function createShiverAnimation(
   config: Required<SkeletonConfig>
 ): ShiverAnimationResult {
-  const duration = 800 / config.speed;
+  const duration = 800 / resolveSpeed(config.speed);
   const isRtl = config.direction === 'rtl';
   const directionKey = isRtl ? 'rtl' : 'ltr';
   const animationName = `skelter-shiver-${directionKey}-${Math.round(duration)}`;
