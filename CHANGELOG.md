@@ -1,5 +1,18 @@
 # skelter
 
+## 0.2.1
+
+### Bug fixes
+
+- **fix(shatter)**: wrapper `View` now applies `borderRadius: bone.borderRadius || config.borderRadius`. Cards with rounded corners were rendered with square shatter tiles.
+- **fix(wave/shiver)**: animation loop is now started once in `SkeletonRenderer` instead of once per bone. Multiple competing `Animated.loop` calls on the same shared `Animated.Value` prevented the animation from running on the native driver. wave/shiver now visibly shimmer.
+- **fix(cache-aware)**: replaced one-shot `wasLoadingOnMount` flag with `everSeenLoading` ref. A component mounted with `isLoading=false` now correctly shows the skeleton when `isLoading` later becomes `true` (e.g. user-triggered reload, key-remount).
+
+### New features
+
+- **`AnimationSpeed` type** — `speed` now accepts `'slow' | 'normal' | 'rapid'` presets in addition to a numeric multiplier. `'slow'` = 0.5×, `'normal'` = 1.0× (default), `'rapid'` = 2.0×. Custom multipliers still work (`speed: 1.5`). All animation modules (pulse, wave, shiver, shatter) use the new `resolveSpeed()` helper.
+- **`resolveSpeed`** exported from the package for advanced use cases.
+
 ## 0.2.0
 
 ### P0 Bug Fixes
