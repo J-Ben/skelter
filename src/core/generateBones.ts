@@ -30,7 +30,9 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
     y: node.layout.y,
     width: node.layout.width,
     height: node.layout.height,
-    borderRadius: 0,
+    // Prefer per-element borderRadius captured from StyleSheet (v0.3+)
+    // SkeletonBone falls back to config.borderRadius if this is 0.
+    borderRadius: node.layout.borderRadius ?? 0,
     type: node.layout.type,
   });
 
