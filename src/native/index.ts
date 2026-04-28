@@ -31,5 +31,8 @@ export type {
   BoneTree,
   ElementType,
   MeasuredLayout,
+  MeasureStrategy,
+  WithSkeletonOptions,
 } from '../core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from '../core/constants';
+export { registerSkeletonLeaf } from '../adapters/native/fiberWalker';
