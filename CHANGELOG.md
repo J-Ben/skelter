@@ -1,5 +1,28 @@
 # skelter
 
+## 0.2.0
+
+### P0 Bug Fixes
+
+- **fix(shatter)**: `shatter` now produces the real grid-fragmentation effect instead of silently falling back to `pulse`. `withSkeleton` routes `mergedConfig.animation === 'shatter'` to `ShatterBone` (grid of squares with staggered opacity, `fadeStyle`: random / cascade / radial). The `shatter→pulse` fallback that shipped in 0.1.1 is removed.
+
+- **fix(shimmer)**: `wave` and `shiver` now render a real LinearGradient highlight (`[color, highlightColor, color]`) that sweeps across the bone instead of translating the entire bone. Requires `expo-linear-gradient` or `react-native-linear-gradient` as an optional peer. If absent, logs a warning once and falls back to solid bone (identical to 0.1.x visuals). The shimmer interpolation is computed synchronously via `useMemo` — available on the first render with no flicker.
+
+- **fix(measure)**: The invisible warmup render used to size itself to its content, making `flex: 1` / `width: '100%'` resolve to 0. The warmup View now uses `left: 0, right: 0` so it inherits the full parent width and `flex`-based components measure correctly without requiring explicit numeric widths.
+
+### Migration
+
+No breaking API changes. `withSkeleton`, `SkeletonTheme`, `useSkeleton`, `hasSkeleton`, `isLoading`, `isLoadingSkeleton`, `skeletonConfig` all work identically.
+
+To enable shimmer on `wave` / `shiver`, install one gradient peer:
+
+```sh
+# Expo
+npx expo install expo-linear-gradient
+# Bare RN
+npm install react-native-linear-gradient
+```
+
 ## 0.1.1
 
 ### Patch Changes
