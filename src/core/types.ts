@@ -32,6 +32,19 @@ export type SkeletonAnimation =
   | 'none';    // Static, no animation
 
 /**
+ * Animation speed — named preset or numeric multiplier.
+ *
+ * Named presets:
+ *   'slow'   → 0.5× (half speed, longer duration)
+ *   'normal' → 1.0× (default)
+ *   'rapid'  → 2.0× (twice as fast, shorter duration)
+ *
+ * Number → custom multiplier (1.0 = normal, 2.0 = rapid, 0.5 = slow).
+ * The multiplier divides the base duration: baseDuration / speed.
+ */
+export type AnimationSpeed = 'slow' | 'normal' | 'rapid' | number;
+
+/**
  * Fade style for the shatter animation.
  */
 export type ShatterFadeStyle = 'random' | 'cascade' | 'radial';
@@ -40,9 +53,13 @@ export type ShatterFadeStyle = 'random' | 'cascade' | 'radial';
  * Configuration for the shatter animation.
  */
 export interface ShatterConfig {
-  /** Number of columns in the fragmentation grid */
+  /**
+   * Number of columns in the fragmentation grid.
+   * Rows are computed automatically to keep squares roughly square.
+   * Example: gridSize 4 on a 200×80 bone → 4 cols × 2 rows = 8 squares.
+   */
   gridSize: number;
-  /** Delay in ms between each square */
+  /** Delay in ms between each square's animation trigger */
   stagger: number;
   /** Order in which squares appear/disappear */
   fadeStyle: ShatterFadeStyle;
@@ -62,8 +79,11 @@ export interface SkeletonConfig {
   color?: string;
   /** Highlight color used during animation */
   highlightColor?: string;
-  /** Animation speed multiplier — 1.0 is default, 2.0 is twice as fast */
-  speed?: number;
+  /**
+   * Animation speed — named preset or numeric multiplier.
+   * 'slow' | 'normal' | 'rapid' or a custom number (1.0 = normal).
+   */
+  speed?: AnimationSpeed;
   /** Default corner radius for all bones */
   borderRadius?: number;
   /** Animation direction — useful for RTL layouts */

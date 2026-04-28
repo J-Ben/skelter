@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import type { CSSProperties } from 'react';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -36,7 +37,7 @@ function injectKeyframes(animationName: string, keyframes: string): void {
 export function createWaveAnimation(
   config: Required<SkeletonConfig>
 ): WaveAnimationResult {
-  const duration = 1500 / config.speed;
+  const duration = 1500 / resolveSpeed(config.speed);
   const isRtl = config.direction === 'rtl';
   const directionKey = isRtl ? 'rtl' : 'ltr';
   const animationName = `skelter-wave-${directionKey}-${Math.round(duration)}`;

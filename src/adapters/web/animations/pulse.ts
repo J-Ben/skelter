@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import type { CSSProperties } from 'react';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -51,7 +52,7 @@ function injectKeyframes(animationName: string, keyframes: string): void {
 export function createPulseAnimation(
   config: Required<SkeletonConfig>
 ): PulseAnimationResult {
-  const duration = 1000 / config.speed;
+  const duration = 1000 / resolveSpeed(config.speed);
   const animationName = `skelter-pulse-${Math.round(duration)}`;
 
   const keyframes = `

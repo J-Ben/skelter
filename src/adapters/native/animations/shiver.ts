@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import { Animated } from 'react-native';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -35,7 +36,7 @@ export function createShiverAnimation(
   const animatedValue = sharedValue ?? new Animated.Value(0);
   let animation: Animated.CompositeAnimation | null = null;
 
-  const baseDuration = 800 / config.speed;
+  const baseDuration = 800 / resolveSpeed(config.speed);
   const isRtl = config.direction === 'rtl';
   const amplitude = boneWidth * 1.5;
 

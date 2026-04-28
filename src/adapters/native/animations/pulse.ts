@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import { Animated } from 'react-native';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -33,7 +34,7 @@ export function createPulseAnimation(
   const animatedValue = sharedValue ?? new Animated.Value(0.3);
   let animation: Animated.CompositeAnimation | null = null;
 
-  const baseDuration = 1000 / config.speed;
+  const baseDuration = 1000 / resolveSpeed(config.speed);
 
   const start = () => {
     animation = Animated.loop(

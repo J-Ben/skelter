@@ -69,6 +69,7 @@ export const ShatterBone = React.memo(function ShatterBone({
         top: bone.y,
         width: bone.width,
         height: bone.height,
+        borderRadius: bone.borderRadius || config.borderRadius,
         overflow: 'hidden',
       }}
     >

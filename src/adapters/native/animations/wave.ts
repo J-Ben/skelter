@@ -1,3 +1,4 @@
+import { resolveSpeed } from '../../../core/constants';
 import { Animated } from 'react-native';
 import type { SkeletonConfig } from '../../../core/types';
 
@@ -34,7 +35,7 @@ export function createWaveAnimation(
   const animatedValue = sharedValue ?? new Animated.Value(0);
   let animation: Animated.CompositeAnimation | null = null;
 
-  const baseDuration = 1500 / config.speed;
+  const baseDuration = 1500 / resolveSpeed(config.speed);
   const isRtl = config.direction === 'rtl';
 
   const start = () => {
