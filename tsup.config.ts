@@ -54,7 +54,12 @@ export default defineConfig([
     clean: false, // Don't clean — web bundle already in dist/
     treeshake: true,
     splitting: false,
-    external: ['react', 'react-native'],
+    external: [
+      'react',
+      'react-native',
+      'expo-linear-gradient',
+      'react-native-linear-gradient',
+    ],
     outDir: 'dist/native',
   },
 ]);
