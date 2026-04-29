@@ -235,7 +235,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {isSkeletonVisible && isLayoutCaptured && (
+      {isSkeletonVisible && isLayoutCaptured && containerDimensions.width > 0 && (
         <View
           style={{ width: containerDimensions.width, height: containerDimensions.height }}
           accessibilityElementsHidden
