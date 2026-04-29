@@ -138,6 +138,26 @@ export interface MeasuredLayout {
 export type MeasureStrategy = 'auto' | 'root-only';
 
 /**
+ * Style overrides applied to the single root bone in root-only mode.
+ * root-only measures the container's layout dimensions but cannot read
+ * per-component style properties (borderRadius, explicit width) from the
+ * wrapped component. Use boneStyle to supply them explicitly.
+ *
+ * @example
+ * // Avatar with circular bone
+ * withSkeleton(Avatar, { measureStrategy: 'root-only', boneStyle: { borderRadius: 48 } })
+ *
+ * // Card with fixed width inside a stretch parent
+ * withSkeleton(Card, { measureStrategy: 'root-only', boneStyle: { width: 200 } })
+ */
+export interface BoneStyleOverride {
+  /** Overrides the corner radius of the root bone */
+  borderRadius?: number;
+  /** Constrains the root bone width (px) instead of using the measured container width */
+  width?: number;
+}
+
+/**
  * Options for withSkeleton (second argument).
  * All fields are optional — sensible defaults are applied.
  */
@@ -160,6 +180,14 @@ export interface WithSkeletonOptions {
    * Example: ['MapView', 'VideoPlayer']
    */
   exclude?: string[];
+  /**
+   * Style overrides for the root bone in root-only mode.
+   * root-only cannot read borderRadius or explicit width from the wrapped
+   * component's style — use boneStyle to pass them explicitly.
+   * Has no effect in 'auto' mode (per-element styles are read from the
+   * Fiber tree directly).
+   */
+  boneStyle?: BoneStyleOverride;
 }
 
 /**

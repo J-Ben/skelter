@@ -1,6 +1,6 @@
 import { useRef, useCallback, useReducer, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
-import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy } from '../../core/types';
+import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy, BoneStyleOverride } from '../../core/types';
 import { measureFiberLeaves } from './fiberWalker';
 
 /**
@@ -44,7 +44,7 @@ interface MeasureNode {
   children: MeasureNode[];
 }
 
-function buildRootOnlyHook(): MeasureLayoutResult {
+function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rootLayoutRef = useRef<MeasuredLayout | null>(null);
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -84,7 +84,14 @@ function buildRootOnlyHook(): MeasureLayoutResult {
     });
 
     boneTreeRef.current = {
-      layout: { x: 0, y: 0, width: rootLayout.width, height: rootLayout.height, type: 'view' },
+      layout: {
+        x: 0,
+        y: 0,
+        width: boneStyle?.width ?? rootLayout.width,
+        height: rootLayout.height,
+        type: 'view',
+        borderRadius: boneStyle?.borderRadius,
+      },
       children,
     };
     isLayoutCapturedRef.current = true;
@@ -213,6 +220,7 @@ export interface UseMeasureLayoutOptions {
   strategy: MeasureStrategy;
   maxDepth: number;
   exclude: string[];
+  boneStyle?: BoneStyleOverride;
 }
 
 /**
@@ -234,7 +242,7 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
     return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return buildRootOnlyHook();
+  return buildRootOnlyHook(opts.boneStyle);
 }
 
 export { detectElementType };

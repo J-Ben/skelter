@@ -9,7 +9,7 @@ import React, {
   ComponentType,
 } from 'react';
 import { View, Animated, AccessibilityInfo } from 'react-native';
-import type { SkeletonConfig, WithSkeletonOptions } from '../../core/types';
+import type { SkeletonConfig, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
 import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
@@ -42,8 +42,10 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
+type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle'>> & { boneStyle?: BoneStyleOverride };
+
 /** Default WithSkeletonOptions applied when no second argument is passed. */
-const DEFAULT_HOC_OPTIONS: Required<WithSkeletonOptions> = {
+const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   measureStrategy: 'auto',
   maxDepth: 8,
   exclude: [],
@@ -78,7 +80,7 @@ export function withSkeleton<P extends object>(
     (Component as { name?: string }).name ||
     'Component';
 
-  const resolvedOptions: Required<WithSkeletonOptions> = {
+  const resolvedOptions: ResolvedHocOptions = {
     ...DEFAULT_HOC_OPTIONS,
     ...options,
     exclude: [...DEFAULT_HOC_OPTIONS.exclude, ...(options?.exclude ?? [])],
@@ -120,7 +122,7 @@ interface SkeletonRendererProps<P extends object> {
   componentProps: P;
   isLoading: boolean;
   skeletonConfig?: SkeletonConfig;
-  hocOptions: Required<WithSkeletonOptions>;
+  hocOptions: ResolvedHocOptions;
 }
 
 const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
@@ -145,6 +147,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     strategy: effectiveStrategy,
     maxDepth: hocOptions.maxDepth,
     exclude: hocOptions.exclude,
+    boneStyle: hocOptions.boneStyle,
   });
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
