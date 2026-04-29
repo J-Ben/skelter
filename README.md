@@ -156,6 +156,23 @@ export default withSkeleton(ArticleCard)
   isLoading={isLoading}
   skeletonConfig={{ animation: 'shatter' }}
 />
+
+// Control speed with named presets or a numeric multiplier
+<ArticleCard
+  hasSkeleton
+  isLoading={isLoading}
+  skeletonConfig={{ animation: 'wave', speed: 'slow' }}   // 0.5×
+/>
+<ArticleCard
+  hasSkeleton
+  isLoading={isLoading}
+  skeletonConfig={{ animation: 'wave', speed: 'rapid' }}  // 2×
+/>
+<ArticleCard
+  hasSkeleton
+  isLoading={isLoading}
+  skeletonConfig={{ animation: 'wave', speed: 1.5 }}      // custom multiplier
+/>
 ```
 
 ### wave / shiver shimmer
