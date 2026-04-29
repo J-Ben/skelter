@@ -3,7 +3,6 @@ import React, {
   useRef,
   useState,
   useEffect,
-  useCallback,
   useContext,
   createContext,
   ComponentType,
@@ -204,18 +203,8 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     return () => anim.stop();
   }, [isSkeletonVisible, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
 
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
-
-  const onContainerLayout = useCallback(
-    (event: { nativeEvent: { layout: { width: number; height: number } } }) => {
-      const { width, height } = event.nativeEvent.layout;
-      if (width > 0 && height > 0) setContainerDimensions({ width, height });
-    },
-    []
-  );
-
   return (
-    <View onLayout={onContainerLayout}>
+    <View>
       {/*
        * Warmup render — invisible, used for layout measurement.
        *
@@ -235,9 +224,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {isSkeletonVisible && isLayoutCaptured && containerDimensions.width > 0 && (
+      {isSkeletonVisible && isLayoutCaptured && boneTree && boneTree.layout.width > 0 && (
         <View
-          style={{ width: containerDimensions.width, height: containerDimensions.height }}
+          style={{ width: boneTree.layout.width, height: boneTree.layout.height }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
