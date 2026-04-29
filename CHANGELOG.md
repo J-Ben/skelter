@@ -1,5 +1,21 @@
 # skelter
 
+## 0.3.1
+
+### Bug fixes
+
+- **fix(gradient)**: `expo-linear-gradient` and `react-native-linear-gradient` were missing from the native bundle's `external` list. esbuild wrapped their `require()` calls with `__require()` helpers that Metro cannot statically analyze, causing wave/shiver to fall back to a solid bone with a module-not-found warning even when the gradient package was installed. Marking them as externals emits bare `require()` calls that Metro resolves correctly. The import workaround (`import 'expo-linear-gradient'` in `_layout.tsx`) and the `sed __require → require` patch can both be removed.
+
+- **fix(warmup)**: bones were rendered inside a `0×0` wrapper when `isLoading=true` on first mount, because the outer `onContainerLayout` fires after `isLayoutCaptured` becomes true. Added `containerDimensions.width > 0` to the render guard — bones now wait for the container to report a real size. The `useFakeLoading` 2-RAF + 200ms warmup workaround can be removed.
+
+- **feat(root-only)**: new `boneStyle` option on `withSkeleton` for root-only mode. `root-only` measures the container dimensions but cannot read per-component style (borderRadius, explicit width). Pass `boneStyle: { borderRadius: 48 }` to produce a circular bone for an Avatar, or `boneStyle: { width: 200 }` to constrain a bone that would otherwise fill a stretch parent. The `borderRadius: 48` override in `Avatar`'s `skeletonConfig` workaround can be removed. `BoneStyleOverride` type exported from the package.
+
+- **chore(auto)**: `auto` strategy now emits a `console.warn` when the fiber walk returns 0 leaves and falls back to root-only. Previously silent — hard to distinguish from an intentional `root-only` call. Suggested action included in the warning message.
+
+### Docs
+
+- **docs(speed)**: added code examples for `speed: 'slow'`, `speed: 'rapid'`, and `speed: 1.5` (custom multiplier) in the Animations section of the README.
+
 ## 0.3.0
 
 ### New features
