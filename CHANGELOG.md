@@ -1,5 +1,11 @@
 # skelter
 
+## 0.3.2
+
+### Bug fixes
+
+- **fix(warmup)**: skeleton was never displayed on first load. The warmup `View` is `position: absolute`, so the outer container reported `width: 0` to `onContainerLayout`, causing the `containerDimensions.width > 0` guard to block the skeleton indefinitely. Fix: replaced `containerDimensions` with `boneTree.layout` dimensions (captured during warmup measurement) — the skeleton now renders correctly as soon as layout is measured.
+
 ## 0.3.1
 
 ### Bug fixes
