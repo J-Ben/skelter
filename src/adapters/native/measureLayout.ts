@@ -171,7 +171,12 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
         measureFiberLeaves(instance, rootPageX, rootPageY, options)
           .then(layouts => {
             if (!layouts || layouts.length === 0) {
-              // Fallback: single root bone
+              console.warn(
+                '[skelter] auto strategy: 0 leaves found, falling back to root-only. ' +
+                'Possible causes: React 19 / Hermes stripped fiber internals, ' +
+                'hermetic bundle, or test environment. ' +
+                'Pass measureStrategy: "root-only" to silence this warning.'
+              );
               boneTreeRef.current = {
                 layout: { x: 0, y: 0, width, height, type: 'view' },
                 children: [],
