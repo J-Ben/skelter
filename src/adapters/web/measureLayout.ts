@@ -89,7 +89,6 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
     }, []);
 
     useEffect(() => {
-        // SSR safe — ResizeObserver is not available on the server
         if (typeof ResizeObserver === 'undefined') return;
         if (!rootRef.current) return;
 
@@ -98,8 +97,6 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
         });
 
         observer.observe(rootRef.current);
-        // Initial measurement
-        measure();
 
         return () => {
             observer.disconnect();
