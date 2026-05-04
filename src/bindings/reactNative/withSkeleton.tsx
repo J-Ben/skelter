@@ -205,18 +205,10 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
 
   return (
     <View>
-      {/*
-       * Warmup render — invisible, used for layout measurement.
-       *
-       * 'auto' strategy: warmupRef is attached to this View so fiberWalker
-       * can access the Fiber tree via the native instance after onLayout fires.
-       *
-       * left:0 right:0 ensures flex/percentage widths resolve correctly.
-       */}
       {!isSSR && !isLayoutCaptured && (
         <View
           ref={warmupRef as React.RefObject<View>}
-          style={{ position: 'absolute', left: 0, right: 0, opacity: 0 }}
+          style={{ opacity: 0 }}
           pointerEvents="none"
           onLayout={onRootLayout}
         >
@@ -224,7 +216,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {isSkeletonVisible && isLayoutCaptured && boneTree && boneTree.layout.width > 0 && (
+      {isSkeletonVisible && isLayoutCaptured && boneTree && (
         <View
           style={{ width: boneTree.layout.width, height: boneTree.layout.height }}
           accessibilityElementsHidden
