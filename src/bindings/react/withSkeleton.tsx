@@ -1,8 +1,5 @@
 import React, {
   memo,
-  useRef,
-  useState,
-  useCallback,
   ComponentType,
   CSSProperties,
 } from 'react';
@@ -11,46 +8,25 @@ import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 
-/**
- * SSR detection.
- */
 const isSSR = typeof window === 'undefined';
 
-/**
- * Props injected by withSkeleton (web).
- */
 export interface SkeletonProps {
-  /** Activates skeleton feature */
   hasSkeleton?: boolean;
-  /** Whether the component is loading */
   isLoading?: boolean;
-  /**
-   * Shorthand — activates hasSkeleton AND isLoading={true}.
-   */
   isLoadingSkeleton?: boolean;
-  /** Local config override */
   skeletonConfig?: SkeletonConfig;
 }
 
 /**
- * Higher-Order Component that adds automatic skeleton loading
- * to any React component.
+ * HOC that adds auto skeleton loading to any React component.
  *
- * Web-specific features:
- * - Uses ResizeObserver for layout capture instead of onLayout
- * - Uses visibility: hidden for invisible first render (better web practice)
+ * Web-specific:
+ * - ResizeObserver for layout capture
+ * - In-flow visibility:hidden warmup (same principle as RN fix)
  * - CSS animations via inline styles — zero external CSS
- * - SSR safe — zero crashes without window
+ * - SSR safe
  *
- * Identical API to the React Native version:
- * hasSkeleton, isLoading, isLoadingSkeleton, skeletonConfig
- *
- * @param Component - The React component to wrap
- * @returns A new component with skeleton loading capability
- *
- * @example
- * export default withSkeleton(ArticleCard)
- * <ArticleCard hasSkeleton isLoading={isLoading} />
+ * Same API as React Native: hasSkeleton, isLoading, isLoadingSkeleton, skeletonConfig
  */
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>
@@ -90,9 +66,6 @@ export function withSkeleton<P extends object>(
   return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
 
-/**
- * Internal renderer for web skeleton display.
- */
 interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
   componentProps: P;
@@ -115,61 +88,28 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-
-  const onSizeChange = useCallback((width: number, height: number) => {
-    if (width > 0 && height > 0) {
-      setContainerSize({ width, height });
-    }
-  }, []);
-
-  // Track container size via ref callback
-  const containerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      onSizeChange(rect.width, rect.height);
-    },
-    [onSizeChange]
-  );
-
-  const containerStyle: CSSProperties = {
-    position: 'relative',
-    display: 'inline-block',
-    width: '100%',
-  };
-
-  /**
-   * Invisible first render style.
-   * Uses visibility: hidden instead of opacity: 0 —
-   * better web practice as it keeps the element in layout flow
-   * while remaining completely invisible.
-   * SSR safe — skipped on the server.
-   */
-  const invisibleStyle: CSSProperties = {
+  // In-flow warmup: visibility:hidden keeps the element in layout flow so that
+  // children relying on parent width (width:100%, flex, etc.) measure correctly.
+  // This mirrors the fix applied to the React Native binding.
+  const warmupStyle: CSSProperties = {
     visibility: 'hidden',
     pointerEvents: 'none',
-    position: 'absolute',
-    top: 0,
-    left: 0,
   };
 
+  // Use measured dimensions from boneTree — avoids the containerSize race
+  // where an absolutely-positioned warmup gives the outer container height=0.
   const skeletonOverlayStyle: CSSProperties = {
     position: 'relative',
-    width: containerSize.width || '100%',
-    height: containerSize.height || 'auto',
+    width: boneTree?.layout.width ?? '100%',
+    height: boneTree?.layout.height ?? 'auto',
   };
 
   return (
-    <div style={containerStyle} ref={containerRef}>
-      {/*
-       * Invisible first render — captures real layout via ResizeObserver.
-       * visibility: hidden keeps element in DOM flow for accurate measurement.
-       * SSR safe — skipped on server.
-       */}
+    <div style={{ position: 'relative', width: '100%' }}>
+      {/* Invisible in-flow warmup — ResizeObserver captures layout. */}
       {!isSSR && !isLayoutCaptured && (
         <div
-          style={invisibleStyle}
+          style={warmupStyle}
           ref={rootRef as React.RefObject<HTMLDivElement>}
           aria-hidden="true"
         >
@@ -177,7 +117,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         </div>
       )}
 
-      {/* Skeleton overlay */}
+      {/* Skeleton overlay — exact dimensions from measured layout. */}
       {isSkeletonVisible && isLayoutCaptured && (
         <div
           style={skeletonOverlayStyle}

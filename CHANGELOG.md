@@ -1,5 +1,13 @@
 # skelter
 
+## 0.3.4
+
+### Bug fixes
+
+- **fix(web/warmup)**: skeleton never showed correctly on web. The warmup `<div>` used `position: absolute, top: 0, left: 0` without `right: 0`, making the outer container collapse to `height: 0`. This caused `containerSize.height` to always be 0, so the skeleton overlay had `height: auto` and took no space in the document flow — bones rendered visually but collapsed the surrounding layout. Fix: warmup is now in-flow (`visibility: hidden` only, same approach as the RN v0.3.3 fix), and the overlay uses `boneTree.layout.width/height` directly instead of the unreliable `containerSize` state.
+
+- **fix(web/measureLayout)**: removed the redundant manual `measure()` call after `observer.observe()`. The ResizeObserver spec guarantees a callback fires on the first observation, so the explicit call was both redundant and a potential source of double measurement.
+
 ## 0.3.3
 
 ### Bug fixes
