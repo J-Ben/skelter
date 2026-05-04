@@ -1,5 +1,13 @@
 # skelter
 
+## 0.3.3
+
+### Bug fixes
+
+- **fix(warmup)**: skeleton never showed for `Text` components or any element without an explicit width when placed inside an `alignItems: flex-start` parent. Root cause: the warmup `View` used `position: absolute, left: 0, right: 0`, which made the outer container collapse to width 0, causing `onRootLayout` to fire with `width: 0` and bail out early. Fix: warmup is now rendered in-flow (`opacity: 0` only). The containing block is provided by the natural flex layout, so all component types resolve their correct dimensions.
+
+- **chore(render-guard)**: removed the now-redundant `boneTree.layout.width > 0` condition — `isLayoutCaptured` is set only after a non-zero layout is measured, so the extra width check was dead code.
+
 ## 0.3.2
 
 ### Bug fixes
