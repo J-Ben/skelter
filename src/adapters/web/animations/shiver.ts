@@ -48,9 +48,9 @@ export function createShiverAnimation(
 
   const keyframes = `
     @keyframes ${animationName} {
-      0%   { transform: translateX(${from}); }
-      50%  { transform: translateX(${mid}); }
-      100% { transform: translateX(${to}); }
+      0%   { transform: translateX(${from}) skewX(-15deg); }
+      50%  { transform: translateX(${mid}) skewX(-15deg); }
+      100% { transform: translateX(${to}) skewX(-15deg); }
     }
   `;
 
