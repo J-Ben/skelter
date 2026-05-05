@@ -1,6 +1,6 @@
 {
   "name": "react-zero-skeleton",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Stop writing skeleton loaders. Auto-generated from your component layout.",
   "keywords": [
     "skeleton",

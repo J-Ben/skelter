@@ -47,8 +47,8 @@ export function createWaveAnimation(
 
   const keyframes = `
     @keyframes ${animationName} {
-      0%   { transform: translateX(${from}); }
-      100% { transform: translateX(${to}); }
+      0%   { transform: translateX(${from}) skewX(-15deg); }
+      100% { transform: translateX(${to}) skewX(-15deg); }
     }
   `;
 

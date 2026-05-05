@@ -74,7 +74,7 @@ export function GradientShimmer({
         bottom: 0,
         left: 0,
         width: boneWidth,
-        transform: [{ translateX }],
+        transform: [{ translateX }, { skewX: '-15deg' }],
       }}
     >
       <Gradient
