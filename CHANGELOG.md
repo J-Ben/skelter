@@ -1,5 +1,11 @@
 # skelter
 
+## 0.3.6
+
+### Docs
+
+- **docs(readme)**: full rewrite — correct package name (`react-zero-skeleton` throughout), separate React Native vs web sections, fix all import examples, tag platform-specific features (Fiber walk, gradient peer, FlatList fallback, JS thread).
+
 ## 0.3.5
 
 ### Bug fixes
