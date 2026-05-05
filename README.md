@@ -2,9 +2,9 @@
 
 **Stop writing skeleton loaders.**
 
-[![npm version](https://img.shields.io/npm/v/skelter)](https://www.npmjs.com/package/skelter)
-[![npm downloads](https://img.shields.io/npm/dm/skelter)](https://www.npmjs.com/package/skelter)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/skelter)](https://bundlephobia.com/package/skelter)
+[![npm version](https://img.shields.io/npm/v/react-zero-skeleton)](https://www.npmjs.com/package/react-zero-skeleton)
+[![npm downloads](https://img.shields.io/npm/dm/react-zero-skeleton)](https://www.npmjs.com/package/react-zero-skeleton)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/react-zero-skeleton)](https://bundlephobia.com/package/react-zero-skeleton)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![React Native](https://img.shields.io/badge/React%20Native-0.70+-61DAFB)](https://reactnative.dev/)

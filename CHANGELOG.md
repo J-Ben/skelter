@@ -1,5 +1,11 @@
 # skelter
 
+## 0.3.5
+
+### Bug fixes
+
+- **fix(web/shatter)**: shatter animation was visually invisible on web. The parent bone container had `backgroundColor: config.color`, so when the child squares animated to `opacity: 0` they faded against the same color — producing no visible effect. Fix: parent container is now `backgroundColor: transparent`; only the individual squares carry the bone color, so they correctly animate against the page background.
+
 ## 0.3.4
 
 ### Bug fixes
