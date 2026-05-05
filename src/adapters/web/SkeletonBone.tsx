@@ -70,15 +70,16 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     [effectiveAnimation, bone, config]
   );
 
-  // Shatter — renders a grid of squares
+  // Shatter — grid of squares animate opacity independently.
+  // Parent must be transparent: squares fade against page background,
+  // not against another bone-colored div (which would make the animation invisible).
   if (effectiveAnimation === 'shatter' && shatterSquares) {
-    const squares = shatterSquares;
     return (
       <div
         aria-hidden="true"
-        style={baseStyle}
+        style={{ ...baseStyle, backgroundColor: 'transparent' }}
       >
-        {squares.map((square, index) => (
+        {shatterSquares.map((square, index) => (
           <div
             key={`shatter-${index}`}
             style={{
@@ -87,6 +88,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
               top: square.y,
               width: square.width,
               height: square.height,
+              borderRadius: bone.borderRadius || config.borderRadius,
               backgroundColor: config.color,
               ...square.style,
             }}
