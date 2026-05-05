@@ -69,19 +69,25 @@ export function useSkeleton({
   }), [themeConfig.config, config]);
 
   /**
-   * Cache awareness — if isLoading is false on mount,
-   * data was already available. Never flash the skeleton.
+   * everSeenLoading — true once isLoading has been true at least once.
+   *
+   * Cache awareness logic:
+   * - Mount with isLoading=false → everSeenLoading stays false →
+   *   skeleton suppressed (data was in cache, avoid flash). ✓
+   * - Mount with isLoading=true  → everSeenLoading becomes true →
+   *   skeleton shows normally. ✓
+   * - Mount with isLoading=false, then isLoading=true later (user reload) →
+   *   everSeenLoading becomes true → skeleton shows. ✓
    */
-  const wasLoadingOnMountRef = useRef<boolean | null>(null);
-  if (wasLoadingOnMountRef.current === null) {
-    wasLoadingOnMountRef.current = isLoading;
-  }
+  const everSeenLoadingRef = useRef(false);
 
   const [isSkeletonVisible, setIsSkeletonVisible] = useState<boolean>(() => {
-    if (!hasSkeleton) return false;
-    if (mergedConfig.disabled) return false;
-    if (!wasLoadingOnMountRef.current) return false;
-    return isLoading;
+    if (!hasSkeleton || mergedConfig.disabled) return false;
+    if (isLoading) {
+      everSeenLoadingRef.current = true;
+      return true;
+    }
+    return false;
   });
 
   const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,15 +99,16 @@ export function useSkeleton({
       return;
     }
 
-    if (!wasLoadingOnMountRef.current) {
-      setIsSkeletonVisible(false);
-      return;
-    }
-
     if (isLoading) {
+      everSeenLoadingRef.current = true;
       loadingStartTimeRef.current = Date.now();
       setIsSkeletonVisible(true);
     } else {
+      if (!everSeenLoadingRef.current) {
+        setIsSkeletonVisible(false);
+        return;
+      }
+
       const elapsed = loadingStartTimeRef.current
         ? Date.now() - loadingStartTimeRef.current
         : 0;

@@ -134,8 +134,10 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         </div>
       )}
 
-      {/* Real component */}
-      {(!isSkeletonVisible || isSSR) && (
+      {/* Real component — also shown during warmup to avoid flash of empty while
+          measurement is in progress (isLayoutCaptured becomes true after first
+          ResizeObserver callback, typically within one frame). */}
+      {(!isSkeletonVisible || isSSR || !isLayoutCaptured) && (
         <Component {...componentProps} />
       )}
     </div>

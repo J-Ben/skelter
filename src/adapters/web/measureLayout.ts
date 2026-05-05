@@ -26,7 +26,8 @@ export interface WebMeasureLayoutResult {
 function detectElementType(element: Element): ElementType {
     if (element instanceof HTMLImageElement) return 'image';
     const tag = element.tagName.toLowerCase();
-    if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'label'].includes(tag)) {
+    if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'label',
+         'a', 'button', 'li', 'td', 'th'].includes(tag)) {
         return 'text';
     }
     return 'view';
