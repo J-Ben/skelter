@@ -25,19 +25,27 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
     return;
   }
 
-  bones.push({
-    x: node.layout.x,
-    y: node.layout.y,
-    width: node.layout.width,
-    height: node.layout.height,
-    // Prefer per-element borderRadius captured from StyleSheet (v0.3+)
-    // SkeletonBone falls back to config.borderRadius if this is 0.
-    borderRadius: node.layout.borderRadius ?? 0,
-    type: node.layout.type,
-  });
+  const isLeaf = node.children.length === 0;
+  const isContent = node.layout.type === 'text' || node.layout.type === 'image';
 
-  for (const child of node.children) {
-    collectBones(child, bones);
+  if (isLeaf || isContent) {
+    // Leaf node or a content element (text/image) — emit a bone.
+    // Text elements are the atomic unit: don't recurse into inline children
+    // (spans, <a> inside <p>, etc.) — the element itself is the bone.
+    bones.push({
+      x: node.layout.x,
+      y: node.layout.y,
+      width: node.layout.width,
+      height: node.layout.height,
+      borderRadius: node.layout.borderRadius ?? 0,
+      type: node.layout.type,
+    });
+  } else {
+    // Container view with children — skip generating a bone for the container
+    // itself (avoids a large gray block covering all children) and recurse.
+    for (const child of node.children) {
+      collectBones(child, bones);
+    }
   }
 }
 

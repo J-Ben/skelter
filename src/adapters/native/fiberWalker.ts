@@ -15,24 +15,33 @@ import type { MeasuredLayout, ElementType } from '../../core/types';
 // ─── Leaf registry ───────────────────────────────────────────────────────────
 
 /**
- * Native component names that are treated as skeleton leaf elements.
- * Each one becomes its own Bone.
+ * Components that are always a bone — they are content or interactive elements
+ * by nature, even when they have host-component children (e.g. Pressable
+ * wrapping a Text). Mirrors the web rule where <a> and <button> are always
+ * treated as leaf elements.
  */
-const NATIVE_LEAVES = new Set([
-  // Views
-  'View', 'RCTView',
-  'ScrollView', 'RCTScrollView',
+const CONTENT_COMPONENTS = new Set([
   'Pressable',
   'TouchableOpacity', 'TouchableHighlight', 'TouchableNativeFeedback',
-  // Text
   'Text', 'RCTText', 'RCTVirtualText',
   'TextInput', 'RCTSinglelineTextInputView', 'RCTMultilineTextInputView',
-  // Image
   'Image', 'RCTImage', 'RCTImageView',
 ]);
 
 /**
- * User-registered third-party components treated as leaves.
+ * Layout/container components that become a bone ONLY when they have no
+ * host-component descendants. A bare <View style={{width:44,height:44}} />
+ * (avatar circle, colour block…) is a leaf. A <View> wrapping Text children
+ * is a layout container and must be skipped so only the inner content gets
+ * bones.
+ */
+const CONTAINER_VIEWS = new Set([
+  'View', 'RCTView',
+  'ScrollView', 'RCTScrollView',
+]);
+
+/**
+ * User-registered third-party components treated as content leaves.
  * Example: registerSkeletonLeaf('FastImage', 'ExpoImage')
  */
 const USER_LEAVES = new Set<string>();
@@ -41,8 +50,9 @@ export function registerSkeletonLeaf(...names: string[]): void {
   names.forEach(n => USER_LEAVES.add(n));
 }
 
-function isLeaf(typeName: string): boolean {
-  return NATIVE_LEAVES.has(typeName) || USER_LEAVES.has(typeName);
+/** Returns true if typeName is any known host component. */
+function isKnownHost(typeName: string): boolean {
+  return CONTENT_COMPONENTS.has(typeName) || CONTAINER_VIEWS.has(typeName) || USER_LEAVES.has(typeName);
 }
 
 function getElementType(typeName: string): ElementType {
@@ -50,6 +60,38 @@ function getElementType(typeName: string): ElementType {
   if (lower.includes('image')) return 'image';
   if (lower.includes('text')) return 'text';
   return 'view';
+}
+
+// ─── Fiber helpers ───────────────────────────────────────────────────────────
+
+function getTypeName(fiber: Record<string, unknown>): string {
+  const t = fiber.type;
+  return typeof t === 'string'
+    ? t
+    : (t as { displayName?: string; name?: string })?.displayName ??
+      (t as { name?: string })?.name ??
+      '';
+}
+
+/**
+ * Returns true when any fiber descendant (child or deeper) is a known host
+ * component. Used to distinguish layout containers (View wrapping children)
+ * from true leaf Views (avatar circle, colour block, etc.).
+ */
+function hasAnyHostDescendant(
+  fiber: Record<string, unknown>,
+  excludeSet: Set<string>
+): boolean {
+  let child = fiber.child as Record<string, unknown> | null;
+  while (child) {
+    const name = getTypeName(child);
+    if (!excludeSet.has(name)) {
+      if (typeof child.type === 'string' && isKnownHost(name)) return true;
+      if (hasAnyHostDescendant(child, excludeSet)) return true;
+    }
+    child = child.sibling as Record<string, unknown> | null;
+  }
+  return false;
 }
 
 // ─── Fiber access ────────────────────────────────────────────────────────────
@@ -92,12 +134,7 @@ function walkFiber(
   if (!fiber || depth > maxDepth) return;
 
   const fiberType = fiber.type;
-  const typeName: string =
-    typeof fiberType === 'string'
-      ? fiberType
-      : (fiberType as { displayName?: string; name?: string })?.displayName ??
-        (fiberType as { name?: string })?.name ??
-        '';
+  const typeName = getTypeName(fiber);
 
   if (excludeSet.has(typeName)) {
     // Excluded — traverse siblings but not children
@@ -107,31 +144,40 @@ function walkFiber(
     return;
   }
 
-  if (typeof fiberType === 'string' && isLeaf(typeName)) {
-    const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
-    let nativeTag = 0;
+  if (typeof fiberType === 'string' && isKnownHost(typeName)) {
+    // Decide whether to emit a bone for this node.
+    // Content/interactive components are always bones.
+    // Container Views are bones only when they have no host descendants
+    // (i.e. they are bare visual blocks, not layout wrappers).
+    const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
+    const shouldCollect = isContent || !hasAnyHostDescendant(fiber, excludeSet);
 
-    if (typeof stateNode === 'number') {
-      nativeTag = stateNode;
-    } else if (stateNode && typeof stateNode === 'object' && 'nativeTag' in stateNode) {
-      nativeTag = (stateNode as { nativeTag: number }).nativeTag;
-    }
+    if (shouldCollect) {
+      const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
+      let nativeTag = 0;
 
-    const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
-    const flatStyle = props.style
-      ? StyleSheet.flatten(props.style as Parameters<typeof StyleSheet.flatten>[0])
-      : {};
-    const borderRadius = (flatStyle as Record<string, unknown>).borderRadius as
-      | number
-      | undefined;
+      if (typeof stateNode === 'number') {
+        nativeTag = stateNode;
+      } else if (stateNode && typeof stateNode === 'object' && 'nativeTag' in stateNode) {
+        nativeTag = (stateNode as { nativeTag: number }).nativeTag;
+      }
 
-    if (stateNode || nativeTag > 0) {
-      out.push({
-        stateNode,
-        nativeTag,
-        type: getElementType(typeName),
-        borderRadius,
-      });
+      const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
+      const flatStyle = props.style
+        ? StyleSheet.flatten(props.style as Parameters<typeof StyleSheet.flatten>[0])
+        : {};
+      const borderRadius = (flatStyle as Record<string, unknown>).borderRadius as
+        | number
+        | undefined;
+
+      if (stateNode || nativeTag > 0) {
+        out.push({
+          stateNode,
+          nativeTag,
+          type: getElementType(typeName),
+          borderRadius,
+        });
+      }
     }
   }
 
