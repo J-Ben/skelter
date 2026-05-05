@@ -88,37 +88,35 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
-  // In-flow warmup: visibility:hidden keeps the element in layout flow so that
-  // children relying on parent width (width:100%, flex, etc.) measure correctly.
-  // This mirrors the fix applied to the React Native binding.
-  const warmupStyle: CSSProperties = {
-    visibility: 'hidden',
-    pointerEvents: 'none',
-  };
+  // The real component is always in the DOM so ResizeObserver observes it
+  // continuously. When the skeleton is visible it becomes visibility:hidden
+  // (not unmounted) so the element keeps its layout dimensions and the
+  // observer keeps firing on viewport changes — bones stay responsive.
+  const hidden = isSkeletonVisible && isLayoutCaptured && !isSSR;
 
-  // Use measured dimensions from boneTree — avoids the containerSize race
-  // where an absolutely-positioned warmup gives the outer container height=0.
   const skeletonOverlayStyle: CSSProperties = {
-    position: 'relative',
-    width: boneTree?.layout.width ?? '100%',
-    height: boneTree?.layout.height ?? 'auto',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
   };
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
-      {/* Invisible in-flow warmup — ResizeObserver captures layout. */}
-      {!isSSR && !isLayoutCaptured && (
-        <div
-          style={warmupStyle}
-          ref={rootRef as React.RefObject<HTMLDivElement>}
-          aria-hidden="true"
-        >
-          <Component {...componentProps} />
-        </div>
-      )}
+      {/* Real component — ref'd for continuous ResizeObserver measurement.
+          visibility:hidden (not unmounted) while skeleton shows so the
+          container keeps its height and bones stay responsive on resize. */}
+      <div
+        ref={rootRef as React.RefObject<HTMLDivElement>}
+        style={hidden ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+        aria-hidden={hidden || undefined}
+      >
+        <Component {...(componentProps as P)} />
+      </div>
 
-      {/* Skeleton overlay — exact dimensions from measured layout. */}
-      {isSkeletonVisible && isLayoutCaptured && (
+      {/* Skeleton overlay — absolutely positioned over the hidden component. */}
+      {isSkeletonVisible && isLayoutCaptured && !isSSR && (
         <div
           style={skeletonOverlayStyle}
           aria-hidden="true"
@@ -132,13 +130,6 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
             />
           ))}
         </div>
-      )}
-
-      {/* Real component — also shown during warmup to avoid flash of empty while
-          measurement is in progress (isLayoutCaptured becomes true after first
-          ResizeObserver callback, typically within one frame). */}
-      {(!isSkeletonVisible || isSSR || !isLayoutCaptured) && (
-        <Component {...componentProps} />
       )}
     </div>
   );
