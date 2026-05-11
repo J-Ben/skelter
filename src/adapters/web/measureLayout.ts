@@ -40,6 +40,12 @@ function detectElementType(element: Element): ElementType {
  * @param rootRect - Bounding rect of the root for relative positioning
  * @returns BoneTree node
  */
+function readBorderRadius(element: Element): number {
+    const computed = window.getComputedStyle(element).borderRadius;
+    const parsed = parseFloat(computed);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
 function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
     const rect = element.getBoundingClientRect();
 
@@ -49,6 +55,7 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
         width: rect.width,
         height: rect.height,
         type: detectElementType(element),
+        borderRadius: readBorderRadius(element),
     };
 
     const children: BoneTree[] = [];
