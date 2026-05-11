@@ -1,5 +1,24 @@
 # skelter
 
+## 0.3.1
+
+### New features
+
+- **`mockProps`** — nouvelle option de `withSkeleton` qui résout le cold start. Le composant est rendu invisiblement avec ces props fictives dès le premier chargement, permettant au fiber walker de mesurer un layout réaliste avant que les vraies données arrivent. Dès que le vrai layout est capturé, `mockProps` n'est plus jamais utilisé.
+
+```tsx
+withSkeleton(ArticleCard, {
+  mockProps: { article: { title: 'Lorem ipsum', image: null } }
+})
+```
+
+Pour les listes, combiner avec `Array(n).fill(null)` côté FlatList :
+
+```tsx
+const data = isLoading ? Array(5).fill(null) : realData;
+// chaque item null → warmup utilise mockProps → bones corrects dès le 1er rendu
+```
+
 ## 0.3.0
 
 ### New features
