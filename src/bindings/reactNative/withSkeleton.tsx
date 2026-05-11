@@ -48,6 +48,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   measureStrategy: 'auto',
   maxDepth: 8,
   exclude: [],
+  mockProps: {},
 };
 
 /**
@@ -212,7 +213,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
           pointerEvents="none"
           onLayout={onRootLayout}
         >
-          <Component {...componentProps} />
+          <Component {...({ ...componentProps, ...hocOptions.mockProps } as P)} />
         </View>
       )}
 
