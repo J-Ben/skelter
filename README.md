@@ -252,7 +252,7 @@ Then anywhere in your app:
 ### `SkeletonConfig`
 
 | Prop | Type | Default | Description |
-|------|------|---------|-------------|
+| ---- | ---- | ------- | ----------- |
 | `animation` | `'pulse' \| 'wave' \| 'shiver' \| 'shatter' \| 'none'` | `'pulse'` | Animation mode |
 | `color` | `string` | `'#E0E0E0'` | Base placeholder color |
 | `highlightColor` | `string` | `'#F5F5F5'` | Highlight color for wave/shiver shimmer |
@@ -276,6 +276,7 @@ Second argument — `withSkeleton(Component, options?)`:
 | `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `'auto'` walks the Fiber tree (one bone per element); `'root-only'` restores v0.2 single-block behaviour |
 | `maxDepth` | `number` | `8` | Max depth of the Fiber tree traversal |
 | `exclude` | `string[]` | `[]` | Component displayNames excluded from the fiber walk (produce no bones) |
+| `mockProps` | `Record<string, unknown>` | `{}` | Props used for the invisible warmup render on cold start — see below |
 
 ```tsx
 // Exclude a heavy third-party widget from measurement
@@ -283,6 +284,35 @@ export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
 
 // Opt out of fiber walk entirely
 export default withSkeleton(Screen, { measureStrategy: 'root-only' })
+```
+
+#### `mockProps` — cold start
+
+On first load, real props often carry no data (`article: null`) so the component renders nothing and no layout can be measured. `mockProps` provides fake data for the invisible warmup render so the fiber walker always has a realistic layout to measure:
+
+```tsx
+withSkeleton(ArticleCard, {
+  mockProps: { article: { title: 'Lorem ipsum', image: null } }
+})
+```
+
+The mock data is merged on top of the real props (`{ ...componentProps, ...mockProps }`) and used **only** while `isLayoutCaptured` is false. Once the real layout is captured it is never used again.
+
+For FlatList, combine with placeholder items on the list side:
+
+```tsx
+const data = isLoading ? Array(5).fill(null) : realData
+
+<FlatList
+  data={data}
+  renderItem={({ item }) => (
+    <ArticleCard
+      article={item}
+      hasSkeleton
+      isLoading={item === null}
+    />
+  )}
+/>
 ```
 
 ### `registerSkeletonLeaf`
@@ -381,7 +411,8 @@ All animations use React Native's `Animated` API. For long lists or low-end devi
 
 - ✅ Per-element bones — one bone per View / Image / Text, auto-measured from Fiber tree
 - ✅ Per-element `borderRadius` — read from each element's StyleSheet
-- ✅ `withSkeleton(Component, options?)` — `measureStrategy`, `maxDepth`, `exclude`
+- ✅ `withSkeleton(Component, options?)` — `measureStrategy`, `maxDepth`, `exclude`, `mockProps`
+- ✅ `mockProps` — cold start solver, warmup renders with fake data before real data arrives
 - ✅ `registerSkeletonLeaf` — add custom image components to the leaf registry
 - ✅ FlatList auto-detection — switches to root-only inside VirtualizedList
 - ✅ `pulse`, `wave`, `shiver`, `shatter` animations, `AnimationSpeed` presets
