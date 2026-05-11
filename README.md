@@ -219,7 +219,7 @@ Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
 ### `SkeletonConfig`
 
 | Prop | Type | Default | Description |
-|------|------|---------|-------------|
+| ---- | ---- | ------- | ----------- |
 | `animation` | `'pulse' \| 'wave' \| 'shiver' \| 'shatter' \| 'none'` | `'pulse'` | Animation mode |
 | `color` | `string` | `'#E0E0E0'` | Base bone color |
 | `highlightColor` | `string` | `'#F5F5F5'` | Highlight color for wave / shiver |
@@ -227,8 +227,62 @@ Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
 | `borderRadius` | `number` | `4` | Fallback corner radius |
 | `direction` | `'ltr' \| 'rtl'` | `'ltr'` | Shimmer direction |
 | `minDuration` | `number` | `0` | Minimum ms the skeleton stays visible |
-| `disabled` | `boolean` | `false` | Never show skeleton |
-| `shatterConfig` | `ShatterConfig` | see below | Shatter-specific settings |
+| `disabled` | `boolean` | `false` | Never show skeleton if true |
+| `maxBonesInList` | `number` | `0` | Max bones rendered in FlatList (0 = unlimited) |
+| `shatterConfig` | `ShatterConfig` | see below | Shatter animation config |
+| `imageConfig` | `{ aspectRatio: number }` | `{ aspectRatio: 1 }` | Image fallback dimensions |
+
+Since v0.3, `borderRadius` is read from each element's `StyleSheet` style automatically. `config.borderRadius` acts as the fallback when the element has no explicit radius.
+
+### `withSkeleton` options
+
+Second argument — `withSkeleton(Component, options?)`:
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `'auto'` walks the Fiber tree (one bone per element); `'root-only'` restores v0.2 single-block behaviour |
+| `maxDepth` | `number` | `8` | Max depth of the Fiber tree traversal |
+| `exclude` | `string[]` | `[]` | Component displayNames excluded from the fiber walk (produce no bones) |
+| `mockProps` | `Record<string, unknown>` | `{}` | Props used for the invisible warmup render on cold start — see below |
+
+```tsx
+export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
+export default withSkeleton(Screen, { measureStrategy: 'root-only' })
+```
+
+#### `mockProps` — cold start
+
+On first load, real props often carry no data (`article: null`) so the component renders nothing and no layout can be measured. `mockProps` provides fake data for the invisible warmup render so the fiber walker always has a realistic layout to measure:
+
+```tsx
+withSkeleton(ArticleCard, {
+  mockProps: { article: { title: 'Lorem ipsum', image: null } }
+})
+```
+
+The mock data is merged on top of the real props (`{ ...componentProps, ...mockProps }`) and used **only** while `isLayoutCaptured` is false. Once the real layout is captured it is never used again.
+
+For FlatList, combine with placeholder items on the list side:
+
+```tsx
+const data = isLoading ? Array(5).fill(null) : realData
+
+<FlatList
+  data={data}
+  renderItem={({ item }) => (
+    <ArticleCard article={item} hasSkeleton isLoading={item === null} />
+  )}
+/>
+```
+
+### `registerSkeletonLeaf`
+
+Registers additional component names as skeleton leaf elements. Use this for custom image libraries that are not detected automatically.
+
+```tsx
+import { registerSkeletonLeaf } from 'skelter'
+registerSkeletonLeaf('FastImage', 'ExpoImage')
+```
 
 ### `ShatterConfig`
 
@@ -335,6 +389,31 @@ All RN animations use the `Animated` API. On low-end devices with long lists, yo
 | RTL support | ✅ | ❌ | ❌ | ✅ |
 | Cache aware | ✅ | ❌ | ❌ | ❌ |
 
+¹ One bone per element by default (v0.3+). `measureStrategy: 'root-only'` falls back to one block per component root.
+² Via `cloneElement` injection — may generate warnings on some third-party components.
+
+---
+
+## Roadmap
+
+### v0.3 — Current
+
+- ✅ Per-element bones — one bone per View / Image / Text, auto-measured from Fiber tree
+- ✅ Per-element `borderRadius` — read from each element's StyleSheet
+- ✅ `withSkeleton(Component, options?)` — `measureStrategy`, `maxDepth`, `exclude`, `mockProps`
+- ✅ `mockProps` — cold start solver, warmup renders with fake data before real data arrives
+- ✅ `registerSkeletonLeaf` — add custom image components to the leaf registry
+- ✅ FlatList auto-detection — switches to root-only inside VirtualizedList
+- ✅ `pulse`, `wave`, `shiver`, `shatter` animations, `AnimationSpeed` presets
+- ✅ FlatList optimization, SSR safe, cache aware, RTL, accessibility (reduce motion)
+
+### v1 — Future
+
+- Opt-in Suspense API — `<SkeletonSuspense fallback={<SkeletonOf component={X} />}>`
+- Dark mode auto via `useColorScheme`
+- Static codegen for FlashList items
+
+---
 ---
 
 ## Contributing

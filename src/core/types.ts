@@ -188,6 +188,19 @@ export interface WithSkeletonOptions {
    * Fiber tree directly).
    */
   boneStyle?: BoneStyleOverride;
+  /**
+   * Mock props used for the invisible warmup render when real props carry no
+   * data (cold start). The component is rendered with these props so the fiber
+   * walker measures a realistic layout before real data arrives.
+   *
+   * Once the real layout is captured, mockProps are never used again.
+   *
+   * Example:
+   *   withSkeleton(ArticleCard, {
+   *     mockProps: { article: { title: 'Lorem ipsum', image: null } }
+   *   })
+   */
+  mockProps?: Record<string, unknown>;
 }
 
 /**
