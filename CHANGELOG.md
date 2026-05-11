@@ -1,5 +1,11 @@
 # skelter
 
+## 0.3.9
+
+### Bug fixes
+
+- **fix(web/borderRadius)**: bones on web always used `config.borderRadius` (default: 4) regardless of the element's actual style. Root cause: `buildBoneTree` never read `borderRadius` from the DOM — `node.layout.borderRadius` was always `undefined`. Fix: read `getComputedStyle(element).borderRadius` for each element during the tree walk. Circular avatars (`border-radius: 50%`) now produce correctly rounded bones; cards with `border-radius: 12px` produce bones with matching radius.
+
 ## 0.3.6
 
 ### Docs
