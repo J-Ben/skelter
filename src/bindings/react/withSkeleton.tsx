@@ -180,7 +180,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     <div style={{ position: 'relative', width: '100%' }}>
       <div
         ref={rootRef as React.RefObject<HTMLDivElement>}
-        style={hidden ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+        style={hidden ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : undefined}
         aria-hidden={hidden || undefined}
       >
         <Component {...(componentProps as P)} />
