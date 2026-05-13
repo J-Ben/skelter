@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useContext } from 'react';
 import { SkeletonContext } from './SkeletonContext';
 import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
 import type { SkeletonConfig, SkeletonAnimation } from '../core/types';
@@ -149,10 +149,14 @@ export function SkeletonTheme({
   exclude = [],
   children,
 }: SkeletonThemeProps) {
-  // Build merged config from provided props + defaults
+  // Inherit from parent SkeletonTheme if nested
+  const parentContext = useContext(SkeletonContext);
+
+  // Build merged config: defaults -> parent -> local props
   const mergedConfig: SkeletonConfig = useMemo(
     () => ({
       ...DEFAULT_SKELETON_CONFIG,
+      ...parentContext.config,
       ...(animation !== undefined && { animation }),
       ...(color !== undefined && { color }),
       ...(highlightColor !== undefined && { highlightColor }),
@@ -176,6 +180,7 @@ export function SkeletonTheme({
       }),
     }),
     [
+      parentContext.config,
       animation, color, highlightColor, speed,
       borderRadius, direction, minDuration,
       disabled, shatterConfig, imageConfig, maxBonesInList,
