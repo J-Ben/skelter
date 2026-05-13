@@ -55,8 +55,9 @@ export type ShatterFadeStyle = 'random' | 'cascade' | 'radial';
 export interface ShatterConfig {
   /**
    * Number of columns in the fragmentation grid.
-   * Rows are computed automatically to keep squares roughly square.
-   * Example: gridSize 4 on a 200×80 bone → 4 cols × 2 rows = 8 squares.
+   * 0 (default) = auto — columns derived from bone width to keep cells ~24px.
+   * Any value > 0 = explicit column count.
+   * Rows are always computed to keep squares roughly square.
    */
   gridSize: number;
   /** Delay in ms between each square's animation trigger */

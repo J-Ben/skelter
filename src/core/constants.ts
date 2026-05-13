@@ -17,7 +17,7 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   minDuration: 0,
   disabled: false,
   shatterConfig: {
-    gridSize: 6,
+    gridSize: 0,
     stagger: 80,
     fadeStyle: 'random',
   },

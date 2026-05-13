@@ -122,7 +122,8 @@ export function createShatterAnimation(
   bone: Bone
 ): ShatterResult {
   const { gridSize, stagger, fadeStyle } = config.shatterConfig;
-  const cols = gridSize;
+  // gridSize 0 = auto: derive column count from bone width so cell size ~24px
+  const cols = gridSize > 0 ? gridSize : Math.max(2, Math.min(20, Math.round(bone.width / 24)));
   const squareWidth = bone.width / cols;
   const rows = Math.max(1, Math.round(bone.height / squareWidth));
   const squareHeight = bone.height / rows;
