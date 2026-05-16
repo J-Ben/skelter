@@ -92,7 +92,9 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   // continuously. When the skeleton is visible it becomes visibility:hidden
   // (not unmounted) so the element keeps its layout dimensions and the
   // observer keeps firing on viewport changes — bones stay responsive.
-  const hidden = isSkeletonVisible && isLayoutCaptured && !isSSR;
+  const hidden =
+    (isSkeletonVisible && isLayoutCaptured && !isSSR) ||
+    (isLoading && !isLayoutCaptured && !isSSR);
 
   const skeletonOverlayStyle: CSSProperties = {
     position: 'absolute',
