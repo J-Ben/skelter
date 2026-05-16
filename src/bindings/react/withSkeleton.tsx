@@ -3,7 +3,7 @@ import React, {
   ComponentType,
   CSSProperties,
 } from 'react';
-import type { SkeletonConfig } from '../../core/types';
+import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions } from '../../core/types';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
@@ -17,19 +17,9 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
-/**
- * HOC that adds auto skeleton loading to any React component.
- *
- * Web-specific:
- * - ResizeObserver for layout capture
- * - In-flow visibility:hidden warmup (same principle as RN fix)
- * - CSS animations via inline styles — zero external CSS
- * - SSR safe
- *
- * Same API as React Native: hasSkeleton, isLoading, isLoadingSkeleton, skeletonConfig
- */
 export function withSkeleton<P extends object>(
-  Component: ComponentType<P>
+  Component: ComponentType<P>,
+  options?: WithSkeletonOptions
 ): ComponentType<P & SkeletonProps> {
   const displayName =
     (Component as { displayName?: string }).displayName ||
@@ -52,6 +42,18 @@ export function withSkeleton<P extends object>(
       return <Component {...(componentProps as P)} />;
     }
 
+    if (options?.staticBones && options.staticBones.length > 0) {
+      return (
+        <StaticWebSkeletonRenderer
+          componentProps={componentProps as P}
+          Component={Component}
+          isLoading={resolvedIsLoading}
+          skeletonConfig={skeletonConfig}
+          staticBones={options.staticBones}
+        />
+      );
+    }
+
     return (
       <WebSkeletonRenderer
         componentProps={componentProps as P}
@@ -65,6 +67,80 @@ export function withSkeleton<P extends object>(
   WrappedComponent.displayName = `withSkeleton(${displayName})`;
   return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
+
+// ─── Static renderer — no warmup, no measurement ─────────────────────────────
+
+interface StaticWebSkeletonRendererProps<P extends object> {
+  Component: ComponentType<P>;
+  componentProps: P;
+  isLoading: boolean;
+  skeletonConfig?: SkeletonConfig;
+  staticBones: StaticBone[];
+}
+
+const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P extends object>({
+  Component,
+  componentProps,
+  isLoading,
+  skeletonConfig,
+  staticBones,
+}: StaticWebSkeletonRendererProps<P>) {
+  const bones: Bone[] = staticBones.map(b => ({
+    x: b.x,
+    y: b.y,
+    width: b.width,
+    height: b.height,
+    borderRadius: b.borderRadius ?? 0,
+    type: b.type ?? 'view',
+  }));
+
+  // Build a synthetic boneTree so useSkeleton can compute dimensions
+  const boneTree = {
+    layout: {
+      x: 0,
+      y: 0,
+      width: Math.max(...bones.map(b => b.x + b.width)),
+      height: Math.max(...bones.map(b => b.y + b.height)),
+      type: 'view' as const,
+    },
+    children: bones.map(b => ({ layout: { ...b }, children: [] })),
+  };
+
+  const { isSkeletonVisible, mergedConfig } = useSkeleton({
+    hasSkeleton: true,
+    isLoading,
+    config: skeletonConfig,
+    boneTree,
+  });
+
+  const skeletonOverlayStyle: CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: boneTree.layout.width,
+    height: boneTree.layout.height,
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {!isSkeletonVisible && <Component {...(componentProps as P)} />}
+
+      {isSkeletonVisible && !isSSR && (
+        <div style={skeletonOverlayStyle} aria-hidden="true" role="presentation">
+          {bones.map((bone, index) => (
+            <SkeletonBone
+              key={`bone-${index}`}
+              bone={bone}
+              config={mergedConfig}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}) as <P extends object>(props: StaticWebSkeletonRendererProps<P>) => React.ReactElement;
+
+// ─── Auto renderer — ResizeObserver measurement ───────────────────────────────
 
 interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
@@ -88,10 +164,6 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
-  // The real component is always in the DOM so ResizeObserver observes it
-  // continuously. When the skeleton is visible it becomes visibility:hidden
-  // (not unmounted) so the element keeps its layout dimensions and the
-  // observer keeps firing on viewport changes — bones stay responsive.
   const hidden =
     (isSkeletonVisible && isLayoutCaptured && !isSSR) ||
     (isLoading && !isLayoutCaptured && !isSSR);
@@ -106,9 +178,6 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
-      {/* Real component — ref'd for continuous ResizeObserver measurement.
-          visibility:hidden (not unmounted) while skeleton shows so the
-          container keeps its height and bones stay responsive on resize. */}
       <div
         ref={rootRef as React.RefObject<HTMLDivElement>}
         style={hidden ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
@@ -117,13 +186,8 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         <Component {...(componentProps as P)} />
       </div>
 
-      {/* Skeleton overlay — absolutely positioned over the hidden component. */}
       {isSkeletonVisible && isLayoutCaptured && !isSSR && (
-        <div
-          style={skeletonOverlayStyle}
-          aria-hidden="true"
-          role="presentation"
-        >
+        <div style={skeletonOverlayStyle} aria-hidden="true" role="presentation">
           {bones.map((bone, index) => (
             <SkeletonBone
               key={`bone-${index}`}
