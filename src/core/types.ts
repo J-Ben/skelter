@@ -55,8 +55,9 @@ export type ShatterFadeStyle = 'random' | 'cascade' | 'radial';
 export interface ShatterConfig {
   /**
    * Number of columns in the fragmentation grid.
-   * Rows are computed automatically to keep squares roughly square.
-   * Example: gridSize 4 on a 200×80 bone → 4 cols × 2 rows = 8 squares.
+   * 0 (default) = auto — columns derived from bone width to keep cells ~24px.
+   * Any value > 0 = explicit column count.
+   * Rows are always computed to keep squares roughly square.
    */
   gridSize: number;
   /** Delay in ms between each square's animation trigger */
@@ -158,6 +159,28 @@ export interface BoneStyleOverride {
 }
 
 /**
+ * A manually declared skeleton bone — used with staticBones to bypass
+ * layout measurement entirely. Useful for async components on web where
+ * the warmup render would cause a blank frame.
+ *
+ * @example
+ * withSkeleton(Card, {
+ *   staticBones: [
+ *     { x: 12, y: 12, width: 200, height: 16, borderRadius: 4 },
+ *     { x: 12, y: 36, width: 300, height: 12, borderRadius: 4 },
+ *   ]
+ * })
+ */
+export interface StaticBone {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  borderRadius?: number;
+  type?: ElementType;
+}
+
+/**
  * Options for withSkeleton (second argument).
  * All fields are optional — sensible defaults are applied.
  */
@@ -201,6 +224,19 @@ export interface WithSkeletonOptions {
    *   })
    */
   mockProps?: Record<string, unknown>;
+  /**
+   * Predefined bones — bypasses layout measurement entirely.
+   * No warmup render, no blank frame, no ResizeObserver.
+   * Skeleton is shown immediately on first render.
+   *
+   * When provided, measureStrategy / maxDepth / exclude / mockProps
+   * are all ignored. Animation, theming, minDuration, and accessibility
+   * are still handled by the HOC.
+   *
+   * Best for: web async components, SSR, or any component where
+   * the auto-measurement warmup would cause a visible flash.
+   */
+  staticBones?: StaticBone[];
 }
 
 /**

@@ -34,6 +34,7 @@ export type {
   MeasureStrategy,
   WithSkeletonOptions,
   BoneStyleOverride,
+  StaticBone,
 } from '../core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from '../core/constants';
 export { registerSkeletonLeaf } from '../adapters/native/fiberWalker';
