@@ -8,7 +8,7 @@ import React, {
   ComponentType,
 } from 'react';
 import { View, Animated, AccessibilityInfo } from 'react-native';
-import type { SkeletonConfig, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
+import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
 import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
@@ -49,6 +49,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   maxDepth: 8,
   exclude: [],
   mockProps: {},
+  staticBones: [],
 };
 
 /**
@@ -100,6 +101,18 @@ export function withSkeleton<P extends object>(
 
     if (!resolvedHasSkeleton) {
       return <Component {...(componentProps as P)} />;
+    }
+
+    if (resolvedOptions.staticBones && resolvedOptions.staticBones.length > 0) {
+      return (
+        <StaticSkeletonRenderer
+          componentProps={componentProps as P}
+          Component={Component}
+          isLoading={resolvedIsLoading}
+          skeletonConfig={skeletonConfig}
+          staticBones={resolvedOptions.staticBones}
+        />
+      );
     }
 
     return (
@@ -244,3 +257,112 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     </View>
   );
 }) as <P extends object>(props: SkeletonRendererProps<P>) => React.ReactElement;
+
+// ─── Static renderer — no warmup, no fiber walk ───────────────────────────────
+
+interface StaticSkeletonRendererProps<P extends object> {
+  Component: ComponentType<P>;
+  componentProps: P;
+  isLoading: boolean;
+  skeletonConfig?: SkeletonConfig;
+  staticBones: StaticBone[];
+}
+
+const StaticSkeletonRenderer = memo(function StaticSkeletonRenderer<P extends object>({
+  Component,
+  componentProps,
+  isLoading,
+  skeletonConfig,
+  staticBones,
+}: StaticSkeletonRendererProps<P>) {
+  const bones: Bone[] = staticBones.map(b => ({
+    x: b.x,
+    y: b.y,
+    width: b.width,
+    height: b.height,
+    borderRadius: b.borderRadius ?? 0,
+    type: b.type ?? 'view',
+  }));
+
+  const boneTree = {
+    layout: {
+      x: 0,
+      y: 0,
+      width: Math.max(...bones.map(b => b.x + b.width)),
+      height: Math.max(...bones.map(b => b.y + b.height)),
+      type: 'view' as const,
+    },
+    children: bones.map(b => ({ layout: { ...b }, children: [] })),
+  };
+
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => sub.remove();
+  }, []);
+
+  const { isSkeletonVisible, mergedConfig } = useSkeleton({
+    hasSkeleton: true,
+    isLoading,
+    config: skeletonConfig,
+    boneTree,
+  });
+
+  useEffect(() => {
+    const animation = mergedConfig.animation;
+    if (!isSkeletonVisible || reduceMotion || animation === 'none' || animation === 'shatter') {
+      animatedValue.stopAnimation();
+      return;
+    }
+    const speed = resolveSpeed(mergedConfig.speed);
+    let anim: Animated.CompositeAnimation;
+    if (animation === 'pulse') {
+      const dur = 1000 / speed;
+      animatedValue.setValue(0.3);
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, { toValue: 1.0, duration: dur / 2, useNativeDriver: true }),
+          Animated.timing(animatedValue, { toValue: 0.3, duration: dur / 2, useNativeDriver: true }),
+        ])
+      );
+    } else {
+      const dur = (animation === 'shiver' ? 800 : 1500) / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.timing(animatedValue, { toValue: 1, duration: dur, useNativeDriver: true })
+      );
+    }
+    anim.start();
+    return () => anim.stop();
+  }, [isSkeletonVisible, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
+
+  return (
+    <View>
+      {isSkeletonVisible && (
+        <View
+          style={{ width: boneTree.layout.width, height: boneTree.layout.height }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {bones.map((bone, index) =>
+            mergedConfig.animation === 'shatter' ? (
+              <ShatterBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
+            ) : (
+              <SkeletonBone
+                key={`bone-${index}`}
+                bone={bone}
+                config={mergedConfig}
+                animatedValue={animatedValue}
+              />
+            )
+          )}
+        </View>
+      )}
+
+      {!isSkeletonVisible && <Component {...componentProps} />}
+    </View>
+  );
+}) as <P extends object>(props: StaticSkeletonRendererProps<P>) => React.ReactElement;

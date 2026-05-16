@@ -1,5 +1,29 @@
 # skelter
 
+## 0.4.0
+
+### New features
+
+- **`staticBones`** — nouvelle option de `withSkeleton` qui bypasse entièrement la mesure de layout. Aucun warmup render, aucune frame blanche, aucun ResizeObserver / Fiber walk. Le skeleton s'affiche immédiatement au premier render. Animation, thème, `minDuration` et accessibilité restent gérés par le HOC.
+
+  Idéal pour les composants async sur web (fetch, React Query) où le warmup produirait un flash de contenu vide.
+
+  ```tsx
+  withSkeleton(ArticleCard, {
+    staticBones: [
+      { x: 12, y: 12,  width: 200, height: 20, borderRadius: 4 },  // titre
+      { x: 12, y: 44,  width: 300, height: 14, borderRadius: 4 },  // sous-titre
+      { x: 12, y: 72,  width: 340, height: 80, borderRadius: 8 },  // image
+    ]
+  })
+  ```
+
+  `staticBones` prend la priorité sur `measureStrategy`, `maxDepth`, `exclude` et `mockProps` — ces options sont ignorées quand `staticBones` est fourni.
+
+- **`StaticBone` type** exporté depuis le package.
+
+- **Web `withSkeleton` second argument** — `withSkeleton(Component, options?)` accepte maintenant les options (web était en retard sur RN).
+
 ## 0.3.9
 
 ### Bug fixes
