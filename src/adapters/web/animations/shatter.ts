@@ -66,11 +66,11 @@ export function createShatterStyles(
   config: Required<SkeletonConfig>,
   bone: Bone
 ): ShatterSquareStyle[] {
-  const { gridSize, stagger, fadeStyle } = config.shatterConfig;
-  // gridSize 0 = auto: derive column count from bone width so cell size ~24px
-  const cols = gridSize > 0 ? gridSize : Math.max(2, Math.min(20, Math.round(bone.width / 24)));
+  const { gridSize, cellSize, stagger, fadeStyle } = config.shatterConfig;
+  const effectiveCellSize = cellSize ?? ((gridSize ?? 0) > 0 ? bone.width / gridSize! : 24);
+  const cols = Math.max(2, Math.round(bone.width / effectiveCellSize));
+  const rows = Math.max(1, Math.round(bone.height / effectiveCellSize));
   const squareWidth = bone.width / cols;
-  const rows = Math.max(1, Math.round(bone.height / squareWidth));
   const squareHeight = bone.height / rows;
   const baseDuration = 600 / resolveSpeed(config.speed);
   const animationName = `skelter-shatter-${Math.round(baseDuration)}`;

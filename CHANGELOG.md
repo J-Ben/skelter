@@ -1,5 +1,16 @@
 # skelter
 
+## 0.4.3
+
+### Patch Changes
+
+- feat(shatter): add `cellSize` option to ShatterConfig
+
+  Fixed cell size in px — every bone uses cells of the same physical size
+  regardless of its own dimensions. Narrow and wide bones now fragment
+  with equal-sized squares; only the count differs with area.
+  Takes priority over `gridSize`. `gridSize` is now optional.
+
 ## 0.4.0
 
 ### New features
@@ -11,11 +22,11 @@
   ```tsx
   withSkeleton(ArticleCard, {
     staticBones: [
-      { x: 12, y: 12,  width: 200, height: 20, borderRadius: 4 },  // titre
-      { x: 12, y: 44,  width: 300, height: 14, borderRadius: 4 },  // sous-titre
-      { x: 12, y: 72,  width: 340, height: 80, borderRadius: 8 },  // image
-    ]
-  })
+      { x: 12, y: 12, width: 200, height: 20, borderRadius: 4 }, // titre
+      { x: 12, y: 44, width: 300, height: 14, borderRadius: 4 }, // sous-titre
+      { x: 12, y: 72, width: 340, height: 80, borderRadius: 8 }, // image
+    ],
+  });
   ```
 
   `staticBones` prend la priorité sur `measureStrategy`, `maxDepth`, `exclude` et `mockProps` — ces options sont ignorées quand `staticBones` est fourni.
@@ -85,6 +96,7 @@
 - **Per-element bones** — `withSkeleton(Component)` now generates one bone per native leaf element (View, Text, Image…) instead of a single block the size of the component root. Each bone precisely mirrors the shape, position, and `borderRadius` of the original element. Zero config change required — the default `measureStrategy: 'auto'` applies automatically.
 
 - **`withSkeleton` second argument** — `withSkeleton(Component, options?)` accepts an optional `WithSkeletonOptions` object:
+
   - `measureStrategy: 'auto' | 'root-only'` — `'auto'` (default) enables per-element fiber walk; `'root-only'` restores v0.2 single-block behaviour.
   - `maxDepth: number` — max depth of the Fiber tree traversal (default: 8). Guards against runaway walks on deeply nested trees.
   - `exclude: string[]` — component displayNames to skip during traversal. Each excluded component produces no bones and is not traversed further. Useful for third-party widgets (`['MapView', 'VideoPlayer']`).
@@ -110,13 +122,13 @@ No breaking API changes. All existing `withSkeleton(Component)` calls work uncha
 To opt out of per-element measurement (e.g. if your component's Fiber internals are not accessible):
 
 ```tsx
-export default withSkeleton(MyComponent, { measureStrategy: 'root-only' })
+export default withSkeleton(MyComponent, { measureStrategy: "root-only" });
 ```
 
 To exclude a heavy third-party widget from the fiber walk:
 
 ```tsx
-export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
+export default withSkeleton(Screen, { exclude: ["MapView", "VideoPlayer"] });
 ```
 
 ## 0.2.1
