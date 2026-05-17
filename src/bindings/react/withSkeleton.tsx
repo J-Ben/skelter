@@ -164,9 +164,9 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
-  const hidden =
-    (isSkeletonVisible && isLayoutCaptured && !isSSR) ||
-    (isLoading && !isLayoutCaptured && !isSSR);
+  // opacity:0 alongside visibility:hidden ensures no content bleeds through
+  // semi-transparent shatter cells — opacity cannot be overridden by children.
+  const hidden = !isSSR && (isLoading || (isSkeletonVisible && isLayoutCaptured));
 
   const skeletonOverlayStyle: CSSProperties = {
     position: 'absolute',
