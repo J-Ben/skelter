@@ -1,5 +1,35 @@
 # skelter
 
+## 0.5.0
+
+### Minor Changes
+
+- Add `exit` option: animated skeleton exit transitions
+
+  Skeletons no longer disappear abruptly. When `isLoading` flips to false the
+  overlay now plays a 300 ms exit animation before the real content appears.
+
+  **Available values** (set via `SkeletonConfig`, `SkeletonTheme`, or `skeletonConfig` prop):
+
+  | value         | effect                              |
+  | ------------- | ----------------------------------- |
+  | `'fade'`      | opacity fade-out (default)          |
+  | `'fadeUp'`    | fade + slide upward                 |
+  | `'fadeDown'`  | fade + slide downward               |
+  | `'fadeLeft'`  | fade + slide left                   |
+  | `'fadeRight'` | fade + slide right                  |
+  | `'none'`      | instant removal (pre-0.5 behaviour) |
+
+  ```tsx
+  // Per component
+  <SkeletonTheme animation="wave" exit="fadeUp">
+    <MyCard hasSkeleton isLoading={loading} />
+  </SkeletonTheme>
+
+  // Or via skeletonConfig prop
+  <MyCard hasSkeleton isLoading={loading} skeletonConfig={{ exit: 'fadeDown' }} />
+  ```
+
 ## 0.4.3
 
 ### Patch Changes

@@ -22,6 +22,18 @@ export interface Bone {
 }
 
 /**
+ * Exit animation played when the skeleton disappears.
+ *
+ * 'fade'      — opacity fade-out (default)
+ * 'fadeUp'    — fade + slide upward
+ * 'fadeDown'  — fade + slide downward
+ * 'fadeLeft'  — fade + slide left
+ * 'fadeRight' — fade + slide right
+ * 'none'      — immediate removal (v0.4 behaviour)
+ */
+export type SkeletonExit = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'none';
+
+/**
  * Available animation modes for skeleton placeholders.
  */
 export type SkeletonAnimation =
@@ -101,6 +113,12 @@ export interface SkeletonConfig {
   minDuration?: number;
   /** If true, skeleton is never displayed regardless of isLoading */
   disabled?: boolean;
+  /**
+   * Exit animation played when the skeleton disappears.
+   * Default: 'fade' (300 ms opacity fade-out).
+   * Set to 'none' to restore the v0.4 instant-removal behaviour.
+   */
+  exit?: SkeletonExit;
   /** Shatter animation configuration */
   shatterConfig?: ShatterConfig;
   /** Image-specific configuration */

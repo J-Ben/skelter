@@ -10,6 +10,7 @@ export type { SkeletonContextValue } from './context/SkeletonContext';
 export type {
   SkeletonConfig,
   SkeletonAnimation,
+  SkeletonExit,
   AnimationSpeed,
   ShatterConfig,
   ShatterFadeStyle,

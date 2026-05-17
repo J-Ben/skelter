@@ -1,5 +1,7 @@
 import type { AnimationSpeed, SkeletonConfig } from './types';
 
+export const SKELETON_EXIT_MS = 300;
+
 /**
  * Default configuration applied when no SkeletonTheme provider
  * is present and no skeletonConfig prop is passed.
@@ -26,6 +28,7 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   },
   /** 0 = unlimited */
   maxBonesInList: 0,
+  exit: 'fade' as const,
 };
 
 /**
