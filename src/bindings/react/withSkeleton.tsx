@@ -1,12 +1,51 @@
 import React, {
   memo,
+  useEffect,
+  useRef,
+  useState,
   ComponentType,
   CSSProperties,
 } from 'react';
-import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions } from '../../core/types';
+import type { Bone, SkeletonConfig, SkeletonExit, StaticBone, WithSkeletonOptions } from '../../core/types';
+import { SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
+
+type ExitPhase = 'visible' | 'exiting' | 'hidden';
+
+function exitTransform(exit: SkeletonExit): string | undefined {
+  if (exit === 'fadeUp')    return 'translateY(-10px)';
+  if (exit === 'fadeDown')  return 'translateY(10px)';
+  if (exit === 'fadeLeft')  return 'translateX(-10px)';
+  if (exit === 'fadeRight') return 'translateX(10px)';
+  return undefined;
+}
+
+function useExitPhase(isSkeletonVisible: boolean, isLoading: boolean, exit: SkeletonExit): ExitPhase {
+  const [phase, setPhase] = useState<ExitPhase>(() => isSkeletonVisible ? 'visible' : 'hidden');
+  const prevVisible = useRef(isSkeletonVisible);
+
+  useEffect(() => {
+    if (isLoading) {
+      setPhase('visible');
+      prevVisible.current = true;
+      return;
+    }
+    if (prevVisible.current && !isSkeletonVisible) {
+      if (exit === 'none') {
+        setPhase('hidden');
+      } else {
+        setPhase('exiting');
+        const t = setTimeout(() => setPhase('hidden'), SKELETON_EXIT_MS);
+        return () => clearTimeout(t);
+      }
+    }
+    prevVisible.current = isSkeletonVisible;
+  }, [isSkeletonVisible, isLoading, exit]);
+
+  return phase;
+}
 
 const isSSR = typeof window === 'undefined';
 
@@ -113,20 +152,30 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
     boneTree,
   });
 
-  const skeletonOverlayStyle: CSSProperties = {
+  const exit = mergedConfig.exit;
+  const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
+  const isExiting = phase === 'exiting';
+  const showOverlay = phase !== 'hidden' && !isSSR;
+
+  const overlayStyle: CSSProperties = {
     position: 'absolute',
     top: 0,
     left: 0,
     width: boneTree.layout.width,
     height: boneTree.layout.height,
+    ...(isExiting && {
+      opacity: 0,
+      transform: exitTransform(exit),
+      transition: `opacity ${SKELETON_EXIT_MS}ms ease, transform ${SKELETON_EXIT_MS}ms ease`,
+    }),
   };
 
   return (
     <div style={{ position: 'relative' }}>
-      {!isSkeletonVisible && <Component {...(componentProps as P)} />}
+      {phase === 'hidden' && <Component {...(componentProps as P)} />}
 
-      {isSkeletonVisible && !isSSR && (
-        <div style={skeletonOverlayStyle} aria-hidden="true" role="presentation">
+      {showOverlay && (
+        <div style={overlayStyle} aria-hidden="true" role="presentation">
           {bones.map((bone, index) => (
             <SkeletonBone
               key={`bone-${index}`}
@@ -164,17 +213,28 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
+  const exit = mergedConfig.exit;
+  const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
+  const isExiting = phase === 'exiting';
+  const showOverlay = phase !== 'hidden' && isLayoutCaptured && !isSSR;
+
   // isLoading hides on both server AND client so SSR HTML matches first client
   // render — no hydration mismatch, no content bleeding through shatter cells.
-  // The skeleton overlay (!isSSR guard) is still client-only.
-  const hidden = isLoading || (isSkeletonVisible && isLayoutCaptured && !isSSR);
+  // Keep content hidden during exit phase too so real content only appears after
+  // the skeleton has fully animated out.
+  const hidden = isLoading || (phase !== 'hidden' && isLayoutCaptured && !isSSR);
 
-  const skeletonOverlayStyle: CSSProperties = {
+  const overlayStyle: CSSProperties = {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
+    ...(isExiting && {
+      opacity: 0,
+      transform: exitTransform(exit),
+      transition: `opacity ${SKELETON_EXIT_MS}ms ease, transform ${SKELETON_EXIT_MS}ms ease`,
+    }),
   };
 
   return (
@@ -187,8 +247,8 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         <Component {...(componentProps as P)} />
       </div>
 
-      {isSkeletonVisible && isLayoutCaptured && !isSSR && (
-        <div style={skeletonOverlayStyle} aria-hidden="true" role="presentation">
+      {showOverlay && (
+        <div style={overlayStyle} aria-hidden="true" role="presentation">
           {bones.map((bone, index) => (
             <SkeletonBone
               key={`bone-${index}`}

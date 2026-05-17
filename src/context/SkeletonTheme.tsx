@@ -1,7 +1,7 @@
 import React, { useMemo, useContext } from 'react';
 import { SkeletonContext } from './SkeletonContext';
 import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
-import type { SkeletonConfig, SkeletonAnimation } from '../core/types';
+import type { SkeletonConfig, SkeletonAnimation, SkeletonExit } from '../core/types';
 
 /**
  * SSR detection — disables auto mode child interception on the server.
@@ -37,6 +37,8 @@ export interface SkeletonThemeProps {
   imageConfig?: SkeletonConfig['imageConfig'];
   /** Maximum bones rendered in FlatList — 0 = unlimited */
   maxBonesInList?: number;
+  /** Exit animation when the skeleton disappears — default 'fade' */
+  exit?: SkeletonExit;
   /**
    * If true, automatically injects hasSkeleton={true} on all
    * child components — zero touch required on individual components.
@@ -145,6 +147,7 @@ export function SkeletonTheme({
   shatterConfig,
   imageConfig,
   maxBonesInList,
+  exit,
   auto = false,
   exclude = [],
   children,
@@ -166,6 +169,7 @@ export function SkeletonTheme({
       ...(minDuration !== undefined && { minDuration }),
       ...(disabled !== undefined && { disabled }),
       ...(maxBonesInList !== undefined && { maxBonesInList }),
+      ...(exit !== undefined && { exit }),
       ...(shatterConfig !== undefined && {
         shatterConfig: {
           ...DEFAULT_SKELETON_CONFIG.shatterConfig,
@@ -183,7 +187,7 @@ export function SkeletonTheme({
       parentContext.config,
       animation, color, highlightColor, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList,
+      disabled, shatterConfig, imageConfig, maxBonesInList, exit,
     ]
   );
 
