@@ -164,9 +164,10 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
-  // opacity:0 alongside visibility:hidden ensures no content bleeds through
-  // semi-transparent shatter cells — opacity cannot be overridden by children.
-  const hidden = !isSSR && (isLoading || (isSkeletonVisible && isLayoutCaptured));
+  // isLoading hides on both server AND client so SSR HTML matches first client
+  // render — no hydration mismatch, no content bleeding through shatter cells.
+  // The skeleton overlay (!isSSR guard) is still client-only.
+  const hidden = isLoading || (isSkeletonVisible && isLayoutCaptured && !isSSR);
 
   const skeletonOverlayStyle: CSSProperties = {
     position: 'absolute',
