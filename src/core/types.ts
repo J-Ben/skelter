@@ -58,8 +58,16 @@ export interface ShatterConfig {
    * 0 (default) = auto — columns derived from bone width to keep cells ~24px.
    * Any value > 0 = explicit column count.
    * Rows are always computed to keep squares roughly square.
+   * Ignored when cellSize is set.
    */
-  gridSize: number;
+  gridSize?: number;
+  /**
+   * Fixed cell size in px. When set, every bone uses cells of this exact size
+   * regardless of its own dimensions — so narrow and wide bones always have
+   * cells of the same physical size (counts differ naturally with area).
+   * Takes priority over gridSize.
+   */
+  cellSize?: number;
   /** Delay in ms between each square's animation trigger */
   stagger: number;
   /** Order in which squares appear/disappear */
