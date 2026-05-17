@@ -1,5 +1,16 @@
 # skelter
 
+## 0.5.1
+
+### Patch Changes
+
+- Fix exit animation: bones were cleared before exit played
+
+  When isSkeletonVisible flipped to false, useSkeleton emptied the bones array
+  immediately. The overlay existed during the exiting phase but had no bones,
+  so the animation ran on an invisible div. Fixed by keeping the last non-empty
+  bones in a ref and using them for display while the exit phase is active.
+
 ## 0.5.0
 
 ### Minor Changes

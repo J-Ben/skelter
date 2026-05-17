@@ -218,6 +218,13 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const isExiting = phase === 'exiting';
   const showOverlay = phase !== 'hidden' && isLayoutCaptured && !isSSR;
 
+  // Keep the last non-empty bones so they remain visible during the exit phase.
+  // useSkeleton clears bones as soon as isSkeletonVisible is false, but we need
+  // them to be present while the exit animation plays out.
+  const lastBonesRef = useRef<Bone[]>([]);
+  if (bones.length > 0) lastBonesRef.current = bones;
+  const displayBones = showOverlay ? lastBonesRef.current : [];
+
   // isLoading hides on both server AND client so SSR HTML matches first client
   // render — no hydration mismatch, no content bleeding through shatter cells.
   // Keep content hidden during exit phase too so real content only appears after
@@ -249,7 +256,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
       {showOverlay && (
         <div style={overlayStyle} aria-hidden="true" role="presentation">
-          {bones.map((bone, index) => (
+          {displayBones.map((bone, index) => (
             <SkeletonBone
               key={`bone-${index}`}
               bone={bone}
