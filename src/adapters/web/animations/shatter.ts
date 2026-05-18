@@ -15,7 +15,7 @@ function injectKeyframes(animationName: string, keyframes: string): void {
 }
 
 /**
- * Deterministic hash — same x,y always returns same value between 0 and 1.
+ * Deterministic hash : same x,y always returns same value between 0 and 1.
  */
 function stableHash(x: number, y: number): number {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
@@ -60,7 +60,7 @@ export interface ShatterSquareStyle {
  *
  * @param config - Merged skeleton configuration
  * @param bone - The bone to fragment
- * @returns Array of ShatterSquareStyle — one per grid square
+ * @returns Array of ShatterSquareStyle : one per grid square
  */
 export function createShatterStyles(
   config: Required<SkeletonConfig>,

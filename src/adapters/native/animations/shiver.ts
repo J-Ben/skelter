@@ -15,13 +15,13 @@ export interface ShiverAnimation {
 }
 
 /**
- * Creates a shiver animation — an intense, rapid wave effect.
+ * Creates a shiver animation : an intense, rapid wave effect.
  *
  * - Wider amplitude than wave: -boneWidth*1.5 to +boneWidth*1.5
  * - Two passes run in parallel for a more intense shimmer
  * - Speed is controlled by config.speed as a multiplier
  * - Accepts an optional shared Animated.Value for synchronization
- * - useNativeDriver: true — runs on the UI thread
+ * - useNativeDriver: true : runs on the UI thread
  *
  * @param config - Merged skeleton configuration
  * @param boneWidth - Width of the bone in pixels

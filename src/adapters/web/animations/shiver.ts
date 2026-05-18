@@ -26,7 +26,7 @@ function injectKeyframes(animationName: string, keyframes: string): void {
 /**
  * Creates a shiver animation for web skeleton bones.
  *
- * - More intense than wave — wider amplitude, faster speed
+ * - More intense than wave : wider amplitude, faster speed
  * - Two keyframe stops create a double-pass shimmer effect
  * - Direction controlled by config.direction (ltr/rtl)
  * - SSR safe

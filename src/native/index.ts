@@ -7,7 +7,7 @@
  * Exports the React Native bindings and native adapters
  * instead of the web bindings.
  *
- * The dev always imports from 'skelter' — never from this file directly.
+ * The dev always imports from 'skelter' : never from this file directly.
  * @example
  * import { withSkeleton, SkeletonTheme } from 'skelter'
  */

@@ -12,7 +12,7 @@ export interface UseSkeletonArgs {
   hasSkeleton: boolean;
   /** Whether the component is currently loading */
   isLoading: boolean;
-  /** Local config — highest priority */
+  /** Local config : highest priority */
   config?: SkeletonConfig;
   /** The measured component tree */
   boneTree: BoneTree | null;
@@ -36,7 +36,7 @@ export interface UseSkeletonResult {
  * Identical behavior to the React Native version:
  * - Config merging: local > SkeletonTheme > defaults
  * - minDuration support
- * - Cache awareness — no flash when data already present
+ * - Cache awareness : no flash when data already present
  * - disabled support
  *
  * Zero React Native dependencies.
@@ -69,7 +69,7 @@ export function useSkeleton({
   }), [themeConfig.config, config]);
 
   /**
-   * everSeenLoading — true once isLoading has been true at least once.
+   * everSeenLoading : true once isLoading has been true at least once.
    *
    * Cache awareness logic:
    * - Mount with isLoading=false → everSeenLoading stays false →

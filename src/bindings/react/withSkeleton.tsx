@@ -107,7 +107,7 @@ export function withSkeleton<P extends object>(
   return WrappedComponent as unknown as ComponentType<P & SkeletonProps>;
 }
 
-// ─── Static renderer — no warmup, no measurement ─────────────────────────────
+// ─── Static renderer : no warmup, no measurement ─────────────────────────────
 
 interface StaticWebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
@@ -189,7 +189,7 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
   );
 }) as <P extends object>(props: StaticWebSkeletonRendererProps<P>) => React.ReactElement;
 
-// ─── Auto renderer — ResizeObserver measurement ───────────────────────────────
+// ─── Auto renderer : ResizeObserver measurement ───────────────────────────────
 
 interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
@@ -226,7 +226,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const displayBones = showOverlay ? lastBonesRef.current : [];
 
   // isLoading hides on both server AND client so SSR HTML matches first client
-  // render — no hydration mismatch, no content bleeding through shatter cells.
+  // render : no hydration mismatch, no content bleeding through shatter cells.
   // Keep content hidden during exit phase too so real content only appears after
   // the skeleton has fully animated out.
   const hidden = isLoading || (phase !== 'hidden' && isLayoutCaptured && !isSSR);

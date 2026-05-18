@@ -4,7 +4,7 @@ import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
 import type { SkeletonConfig, SkeletonAnimation, SkeletonExit } from '../core/types';
 
 /**
- * SSR detection — disables auto mode child interception on the server.
+ * SSR detection : disables auto mode child interception on the server.
  * Prevents crashes when window is not available.
  */
 const isSSR = typeof window === 'undefined';
@@ -25,7 +25,7 @@ export interface SkeletonThemeProps {
   speed?: number;
   /** Default corner radius for all bones */
   borderRadius?: number;
-  /** Animation direction — ltr or rtl */
+  /** Animation direction : ltr or rtl */
   direction?: 'ltr' | 'rtl';
   /** Minimum duration in ms the skeleton stays visible */
   minDuration?: number;
@@ -35,15 +35,15 @@ export interface SkeletonThemeProps {
   shatterConfig?: SkeletonConfig['shatterConfig'];
   /** Image-specific configuration */
   imageConfig?: SkeletonConfig['imageConfig'];
-  /** Maximum bones rendered in FlatList — 0 = unlimited */
+  /** Maximum bones rendered in FlatList : 0 = unlimited */
   maxBonesInList?: number;
-  /** Exit animation when the skeleton disappears — default 'fade' */
+  /** Exit animation when the skeleton disappears : default 'fade' */
   exit?: SkeletonExit;
   /**
    * If true, automatically injects hasSkeleton={true} on all
-   * child components — zero touch required on individual components.
+   * child components : zero touch required on individual components.
    * Excluded components are listed in the exclude prop.
-   * SSR safe — disabled on the server.
+   * SSR safe : disabled on the server.
    */
   auto?: boolean;
   /**
@@ -59,9 +59,9 @@ export interface SkeletonThemeProps {
  * Recursively processes React children in auto mode.
  * Injects hasSkeleton={true} on all eligible components.
  *
- * Defensive — wrapped in try/catch per element.
+ * Defensive : wrapped in try/catch per element.
  * Third-party components that reject unknown props are skipped safely.
- * SSR safe — returns children unchanged on the server.
+ * SSR safe : returns children unchanged on the server.
  *
  * @param children - React children to process
  * @param exclude - DisplayNames to skip
@@ -71,7 +71,7 @@ function injectSkeletonProps(
   children: React.ReactNode,
   exclude: string[]
 ): React.ReactNode {
-  // SSR safe — skip injection on the server
+  // SSR safe : skip injection on the server
   if (isSSR) return children;
 
   return React.Children.map(children, (child) => {
@@ -89,7 +89,7 @@ function injectSkeletonProps(
           ? elementType
           : '';
 
-      // Skip excluded components — NavigationContainer, MapView, etc.
+      // Skip excluded components : NavigationContainer, MapView, etc.
       if (exclude.includes(displayName)) return child;
 
       // Recursively process nested children
@@ -118,7 +118,7 @@ function injectSkeletonProps(
  *
  * Wrap your app once to configure skeleton behavior globally.
  * When auto={true}, hasSkeleton is injected on all child components
- * automatically — no withSkeleton or hasSkeleton prop needed anywhere.
+ * automatically : no withSkeleton or hasSkeleton prop needed anywhere.
  *
  * Config priority chain:
  * skeletonConfig per component > SkeletonTheme > DEFAULT_SKELETON_CONFIG
@@ -130,7 +130,7 @@ function injectSkeletonProps(
  * </SkeletonTheme>
  *
  * @example
- * // Auto mode — zero touch on individual components
+ * // Auto mode : zero touch on individual components
  * <SkeletonTheme animation="shatter" auto exclude={['MapView']}>
  *   <App />
  * </SkeletonTheme>
@@ -196,7 +196,7 @@ export function SkeletonTheme({
     [mergedConfig, auto, exclude]
   );
 
-  // Auto mode — inject hasSkeleton recursively on all eligible children
+  // Auto mode : inject hasSkeleton recursively on all eligible children
   const processedChildren = useMemo(() => {
     if (!auto) return children;
     return injectSkeletonProps(children, exclude);

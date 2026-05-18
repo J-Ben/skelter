@@ -18,12 +18,12 @@ export interface ShatterBoneProps {
  * Renders the shatter animation for a single bone.
  *
  * Unlike other bone types, ShatterBone does NOT use a shared Animated.Value.
- * Each square has its own Animated.Value — the staggered delay between squares
+ * Each square has its own Animated.Value : the staggered delay between squares
  * is intentional and is what creates the fragmentation effect.
  *
  * - Respects AccessibilityInfo.isReduceMotionEnabled
  * - If reduceMotion is active, renders static squares with no animation
- * - Cleans up all animations on unmount — zero memory leaks
+ * - Cleans up all animations on unmount : zero memory leaks
  *
  * @param props - ShatterBoneProps
  */
@@ -43,7 +43,7 @@ export const ShatterBone = React.memo(function ShatterBone({
     return () => subscription.remove();
   }, []);
 
-  // Création synchrone — le composant peut render immédiatement sans attendre useEffect
+  // Création synchrone : le composant peut render immédiatement sans attendre useEffect
   const shatter = useMemo(
     () => createShatterAnimation(config, bone),
     [bone, config]

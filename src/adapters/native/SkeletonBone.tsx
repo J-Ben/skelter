@@ -8,14 +8,14 @@ export interface SkeletonBoneProps {
   config: Required<SkeletonConfig>;
   /**
    * Shared Animated.Value driven by SkeletonRenderer (withSkeleton).
-   * A single loop runs there — SkeletonBone only reads/interpolates this value.
+   * A single loop runs there : SkeletonBone only reads/interpolates this value.
    * ShatterBone manages its own values internally and does not use this prop.
    */
   animatedValue: Animated.Value;
 }
 
 /**
- * Renders a single skeleton placeholder bone. Pure renderer — no animation
+ * Renders a single skeleton placeholder bone. Pure renderer : no animation
  * lifecycle managed here. The shared animatedValue is driven by SkeletonRenderer.
  *
  * pulse  → outer Animated.View opacity tracks animatedValue (0.3↔1.0)
@@ -42,7 +42,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
 
   /**
    * Shimmer interpolation for wave / shiver.
-   * Computed synchronously (useMemo) so it is available on the first render —
+   * Computed synchronously (useMemo) so it is available on the first render :
    * no ref-hack, no one-frame flicker.
    *
    * wave:   translateX [-width,  +width]  (1× amplitude)
