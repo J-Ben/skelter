@@ -16,7 +16,7 @@ import { defineConfig } from 'tsup';
  *    Resolved automatically by Metro and other RN bundlers
  *
  * Both bundles are tree-shakable via sideEffects: false in package.json.
- * React and React Native are externalized — not bundled.
+ * React and React Native are externalized : not bundled.
  */
 export default defineConfig([
   /**
@@ -36,7 +36,7 @@ export default defineConfig([
     external: ['react', 'react-native'],
     outDir: 'dist',
     banner: {
-      js: '/* skelter — Stop writing skeleton loaders. */',
+      js: '/* skelter : Stop writing skeleton loaders. */',
     },
   },
 
@@ -47,7 +47,7 @@ export default defineConfig([
    *
    * platform: 'node' tells esbuild that require() is always available in the
    * target runtime (Metro provides it). Without this, esbuild wraps every
-   * require() inside a try/catch with a __require() shim — Metro's static
+   * require() inside a try/catch with a __require() shim : Metro's static
    * analysis does not recognize __require() and fails to bundle optional peers
    * (expo-linear-gradient, react-native-linear-gradient) even when installed.
    */
@@ -58,7 +58,7 @@ export default defineConfig([
     format: ['cjs', 'esm'],
     dts: true,
     sourcemap: true,
-    clean: false, // Don't clean — web bundle already in dist/
+    clean: false, // Don't clean : web bundle already in dist/
     treeshake: true,
     splitting: false,
     platform: 'node',
@@ -70,14 +70,14 @@ export default defineConfig([
     ],
     outDir: 'dist/native',
     onSuccess: async () => {
-      // esbuild wraps require() calls inside try/catch with __require() — a shim
+      // esbuild wraps require() calls inside try/catch with __require() : a shim
       // that Metro's static dependency analyzer does not recognize. Metro must see
       // bare require('expo-linear-gradient') / require('react-native-linear-gradient')
       // calls to add the optional gradient peers to the app bundle.
       //
       // Metro's collect-dependencies plugin treats require() inside try/catch as
       // optional: it bundles the module when installed and silently skips it when
-      // absent — exactly the behaviour the original try/catch was meant to provide.
+      // absent : exactly the behaviour the original try/catch was meant to provide.
       //
       // This post-process restores that semantic in the CJS output.
       const { readFileSync, writeFileSync } = await import('fs');

@@ -29,9 +29,9 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
   const isContent = node.layout.type === 'text' || node.layout.type === 'image';
 
   if (isLeaf || isContent) {
-    // Leaf node or a content element (text/image) — emit a bone.
+    // Leaf node or a content element (text/image) : emit a bone.
     // Text elements are the atomic unit: don't recurse into inline children
-    // (spans, <a> inside <p>, etc.) — the element itself is the bone.
+    // (spans, <a> inside <p>, etc.) : the element itself is the bone.
     bones.push({
       x: node.layout.x,
       y: node.layout.y,
@@ -41,7 +41,7 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
       type: node.layout.type,
     });
   } else {
-    // Container view with children — skip generating a bone for the container
+    // Container view with children : skip generating a bone for the container
     // itself (avoids a large gray block covering all children) and recurse.
     for (const child of node.children) {
       collectBones(child, bones);
@@ -59,7 +59,7 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
  * - Filters out elements with zero width or height
  * - Preserves element type (view / image / text)
  * - Flattens the hierarchy while respecting parent/child order
- * - Pure function — no side effects, no external dependencies
+ * - Pure function : no side effects, no external dependencies
  *
  * @param boneTree - The root of the measured component tree
  * @returns A flat array of Bone instances ready for rendering

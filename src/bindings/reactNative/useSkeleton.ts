@@ -26,7 +26,7 @@ export interface UseSkeletonResult {
  *
  * Cache awareness (fixed in 0.2.1):
  * If isLoading is false on mount AND never transitions to true, the component
- * had data in cache — no skeleton flash. But if isLoading later becomes true
+ * had data in cache : no skeleton flash. But if isLoading later becomes true
  * (user triggers a reload), the skeleton DOES show. This fixes the one-shot
  * bug where a key-remount with isLoading=false permanently suppressed the skeleton.
  */
@@ -55,7 +55,7 @@ export function useSkeleton({
   }), [themeConfig.config, config]);
 
   /**
-   * everSeenLoading — true once isLoading has been true at least once.
+   * everSeenLoading : true once isLoading has been true at least once.
    *
    * Cache awareness logic:
    * - Mount with isLoading=false → everSeenLoading stays false →
@@ -92,7 +92,7 @@ export function useSkeleton({
       setIsSkeletonVisible(true);
     } else {
       if (!everSeenLoadingRef.current) {
-        // isLoading has never been true — data was in cache, skip skeleton
+        // isLoading has never been true : data was in cache, skip skeleton
         setIsSkeletonVisible(false);
         return;
       }

@@ -231,7 +231,7 @@ export interface UseMeasureLayoutOptions {
 /**
  * Captures the layout of a component tree for skeleton generation.
  *
- * 'root-only' strategy: uses onLayout on the warmup wrapper — v0.2 behaviour,
+ * 'root-only' strategy: uses onLayout on the warmup wrapper : v0.2 behaviour,
  *   produces a single bone the size of the component root.
  *
  * 'auto' strategy: after the warmup render's onLayout fires, walks the React

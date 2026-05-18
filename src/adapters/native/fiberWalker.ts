@@ -15,7 +15,7 @@ import type { MeasuredLayout, ElementType } from '../../core/types';
 // ─── Leaf registry ───────────────────────────────────────────────────────────
 
 /**
- * Components that are always a bone — they are content or interactive elements
+ * Components that are always a bone : they are content or interactive elements
  * by nature, even when they have host-component children (e.g. Pressable
  * wrapping a Text). Mirrors the web rule where <a> and <button> are always
  * treated as leaf elements.
@@ -113,7 +113,7 @@ function getFiber(instance: object): unknown {
 // ─── Fiber walk ──────────────────────────────────────────────────────────────
 
 interface CollectedNode {
-  stateNode: unknown;      // Native instance — exposes .measure()
+  stateNode: unknown;      // Native instance : exposes .measure()
   nativeTag: number;       // Fallback for UIManager path
   type: ElementType;
   borderRadius?: number;
@@ -137,7 +137,7 @@ function walkFiber(
   const typeName = getTypeName(fiber);
 
   if (excludeSet.has(typeName)) {
-    // Excluded — traverse siblings but not children
+    // Excluded : traverse siblings but not children
     if (fiber.sibling) {
       walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
     }
@@ -210,7 +210,7 @@ function measureNode(node: CollectedNode, callback: MeasureCallback): void {
     return;
   }
   if (node.nativeTag > 0) {
-    // Old arch UIManager path — dynamic require to avoid breaking SSR/web
+    // Old arch UIManager path : dynamic require to avoid breaking SSR/web
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { UIManager } = require('react-native');

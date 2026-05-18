@@ -15,7 +15,7 @@ export interface SkeletonBoneProps {
 
 /**
  * Detects if the user has requested reduced motion.
- * SSR safe — returns false when window is unavailable.
+ * SSR safe : returns false when window is unavailable.
  */
 function getReduceMotion(): boolean {
   if (typeof window === 'undefined') return false;
@@ -25,9 +25,9 @@ function getReduceMotion(): boolean {
 /**
  * Renders a single skeleton placeholder bone for web.
  *
- * - Uses CSS animations via inline styles — zero external CSS files
+ * - Uses CSS animations via inline styles : zero external CSS files
  * - Delegates animation to the correct module based on config.animation
- * - Respects prefers-reduced-motion — falls back to none if active
+ * - Respects prefers-reduced-motion : falls back to none if active
  * - Listens for changes to prefers-reduced-motion
  * - aria-hidden to hide from screen readers
  * - SSR safe
@@ -70,7 +70,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     [effectiveAnimation, bone, config]
   );
 
-  // Shatter — grid of squares animate opacity independently.
+  // Shatter : grid of squares animate opacity independently.
   // Parent must be transparent: squares fade against page background,
   // not against another bone-colored div (which would make the animation invisible).
   if (effectiveAnimation === 'shatter' && shatterSquares) {
@@ -98,7 +98,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
-  // Wave — shimmer overlay
+  // Wave : shimmer overlay
   if (effectiveAnimation === 'wave') {
     const { style } = createWaveAnimation(config);
     return (
@@ -108,7 +108,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
-  // Shiver — intense shimmer overlay
+  // Shiver : intense shimmer overlay
   if (effectiveAnimation === 'shiver') {
     const { style } = createShiverAnimation(config);
     return (
@@ -118,7 +118,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
-  // Pulse — opacity animation on the bone itself
+  // Pulse : opacity animation on the bone itself
   if (effectiveAnimation === 'pulse') {
     const { style } = createPulseAnimation(config);
     return (
@@ -129,6 +129,6 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
-  // None — static bone, no animation
+  // None : static bone, no animation
   return <div aria-hidden="true" style={baseStyle} />;
 });

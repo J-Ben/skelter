@@ -26,7 +26,7 @@ try {
     _VirtualizedListContext = mod.VirtualizedListContext;
   }
 } catch {
-  // Module unavailable — fallback context stays in use
+  // Module unavailable : fallback context stays in use
 }
 
 function useIsInFlatList(): boolean {
@@ -57,8 +57,8 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  *
  * @param Component - The component to wrap
  * @param options   - Optional measurement configuration
- *   measureStrategy: 'auto' (default) — one bone per leaf element via Fiber walk
- *   measureStrategy: 'root-only'      — single block, identical to v0.2
+ *   measureStrategy: 'auto' (default) : one bone per leaf element via Fiber walk
+ *   measureStrategy: 'root-only'      : single block, identical to v0.2
  *   maxDepth: max depth of Fiber traversal (default 8)
  *   exclude: component displayNames excluded from per-element measurement
  *
@@ -66,7 +66,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  * // One bone per element in ProfileCard (avatar, name, bio…)
  * export default withSkeleton(ProfileCard)
  *
- * // v0.2 compat — single root block
+ * // v0.2 compat : single root block
  * export default withSkeleton(ProfileCard, { measureStrategy: 'root-only' })
  *
  * // Exclude a third-party map from per-element walk
@@ -185,7 +185,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     return () => sub.remove();
   }, []);
 
-  // Single animation loop — drives all bones from this component.
+  // Single animation loop : drives all bones from this component.
   useEffect(() => {
     const animation = mergedConfig.animation;
     if (!isSkeletonVisible || reduceMotion || animation === 'none' || animation === 'shatter') {
@@ -258,7 +258,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   );
 }) as <P extends object>(props: SkeletonRendererProps<P>) => React.ReactElement;
 
-// ─── Static renderer — no warmup, no fiber walk ───────────────────────────────
+// ─── Static renderer : no warmup, no fiber walk ───────────────────────────────
 
 interface StaticSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;

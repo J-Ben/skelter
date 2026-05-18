@@ -18,7 +18,7 @@ import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
 import type { SkeletonConfig } from '../core/types';
 
 /**
- * Mock withSkeleton — returns the component unchanged.
+ * Mock withSkeleton : returns the component unchanged.
  * No layout capture, no animation, no overhead in tests.
  */
 export function withSkeleton<P extends object>(
@@ -38,7 +38,7 @@ export function withSkeleton<P extends object>(
 }
 
 /**
- * Mock SkeletonTheme — renders children directly.
+ * Mock SkeletonTheme : renders children directly.
  * No context, no injection, no side effects in tests.
  */
 export function SkeletonTheme({
@@ -50,9 +50,9 @@ export function SkeletonTheme({
 }
 
 /**
- * Mock useSkeleton — returns stable, predictable values.
- * isSkeletonVisible is always false — components render normally in tests.
- * bones is always empty — no skeleton rendered.
+ * Mock useSkeleton : returns stable, predictable values.
+ * isSkeletonVisible is always false : components render normally in tests.
+ * bones is always empty : no skeleton rendered.
  */
 export function useSkeleton() {
   return {

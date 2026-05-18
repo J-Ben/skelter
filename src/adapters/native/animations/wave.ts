@@ -20,7 +20,7 @@ export interface WaveAnimation {
  * - Translates from -boneWidth to +boneWidth (ltr) or reversed (rtl)
  * - Speed is controlled by config.speed as a multiplier
  * - Accepts an optional shared Animated.Value for synchronization
- * - useNativeDriver: true — runs on the UI thread
+ * - useNativeDriver: true : runs on the UI thread
  *
  * @param config - Merged skeleton configuration
  * @param boneWidth - Width of the bone in pixels

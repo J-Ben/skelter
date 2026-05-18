@@ -21,7 +21,7 @@ export interface PulseAnimation {
  * - Speed is controlled by config.speed as a multiplier
  * - Accepts an optional shared Animated.Value so all bones
  *   in the same component stay perfectly synchronized
- * - useNativeDriver: true — runs on the UI thread
+ * - useNativeDriver: true : runs on the UI thread
  *
  * @param config - Merged skeleton configuration
  * @param sharedValue - Optional shared Animated.Value from withSkeleton

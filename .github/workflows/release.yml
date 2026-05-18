@@ -1,4 +1,4 @@
-# Skelter Release — automatic publish to npm via Changesets
+# Skelter Release : automatic publish to npm via Changesets
 #
 # Flow :
 # 1. Dev merges a PR with a changeset file

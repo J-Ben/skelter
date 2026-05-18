@@ -1,4 +1,4 @@
-# Skelter CI — runs on every push and pull request to main
+# Skelter CI : runs on every push and pull request to main
 # Jobs: typecheck → test → build
 
 name: CI

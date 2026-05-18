@@ -24,7 +24,7 @@ try {
     const mod = require('react-native-linear-gradient');
     LinearGradient = mod.default ?? mod.LinearGradient ?? null;
   } catch {
-    // No gradient lib — shimmer falls back to solid bone with no highlight
+    // No gradient lib : shimmer falls back to solid bone with no highlight
   }
 }
 
@@ -40,7 +40,7 @@ export interface GradientShimmerProps {
  * Renders a gradient highlight that sweeps across a skeleton bone.
  *
  * Requires expo-linear-gradient or react-native-linear-gradient as a peer.
- * If neither is available, warns once and renders nothing — the bone still
+ * If neither is available, warns once and renders nothing : the bone still
  * shows its base color (same visual as 0.1.x).
  *
  * The gradient is boneWidth wide and translates from -boneWidth to +boneWidth,

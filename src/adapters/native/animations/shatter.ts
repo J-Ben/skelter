@@ -23,7 +23,7 @@ export interface ShatterResult {
 }
 
 /**
- * Deterministic hash function — same x,y always returns same value.
+ * Deterministic hash function : same x,y always returns same value.
  * Used to generate a stable random order for shatter squares.
  *
  * @param x - Bone x position
@@ -72,7 +72,7 @@ function computeTriggerOrder(
   const count = squares.length;
 
   if (fadeStyle === 'cascade') {
-    // Left to right, row by row — natural index order
+    // Left to right, row by row : natural index order
     return Array.from({ length: count }, (_, i) => i);
   }
 
@@ -80,7 +80,7 @@ function computeTriggerOrder(
     const centerX = bone.x + bone.width / 2;
     const centerY = bone.y + bone.height / 2;
 
-    // Sort by distance from bone center — closest first
+    // Sort by distance from bone center : closest first
     return Array.from({ length: count }, (_, i) => i).sort((a, b) => {
       const squareA = squares[a];
       const squareB = squares[b];
@@ -96,12 +96,12 @@ function computeTriggerOrder(
     });
   }
 
-  // random — stable order using deterministic seed
+  // random : stable order using deterministic seed
   return stableRandomOrder(count, Math.floor(seed * 0xffffffff));
 }
 
 /**
- * Creates the shatter animation — Skelter's signature effect.
+ * Creates the shatter animation : Skelter's signature effect.
  *
  * Subdivides a bone into a grid of small squares.
  * Each square fades out and back in with a staggered delay,

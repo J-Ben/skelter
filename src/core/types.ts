@@ -4,7 +4,7 @@
 export type ElementType = 'view' | 'image' | 'text';
 
 /**
- * A single visual unit of a skeleton — represents one placeholder block.
+ * A single visual unit of a skeleton : represents one placeholder block.
  */
 export interface Bone {
   /** Horizontal position relative to the component root */
@@ -24,12 +24,12 @@ export interface Bone {
 /**
  * Exit animation played when the skeleton disappears.
  *
- * 'fade'      — opacity fade-out (default)
- * 'fadeUp'    — fade + slide upward
- * 'fadeDown'  — fade + slide downward
- * 'fadeLeft'  — fade + slide left
- * 'fadeRight' — fade + slide right
- * 'none'      — immediate removal (v0.4 behaviour)
+ * 'fade'      : opacity fade-out (default)
+ * 'fadeUp'    : fade + slide upward
+ * 'fadeDown'  : fade + slide downward
+ * 'fadeLeft'  : fade + slide left
+ * 'fadeRight' : fade + slide right
+ * 'none'      : immediate removal (v0.4 behaviour)
  */
 export type SkeletonExit = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'none';
 
@@ -40,11 +40,11 @@ export type SkeletonAnimation =
   | 'pulse'    // Soft fade in/out
   | 'wave'     // Shimmer left to right
   | 'shiver'   // Intense wave
-  | 'shatter'  // Signature — grid fragmentation
+  | 'shatter'  // Signature : grid fragmentation
   | 'none';    // Static, no animation
 
 /**
- * Animation speed — named preset or numeric multiplier.
+ * Animation speed : named preset or numeric multiplier.
  *
  * Named presets:
  *   'slow'   → 0.5× (half speed, longer duration)
@@ -67,7 +67,7 @@ export type ShatterFadeStyle = 'random' | 'cascade' | 'radial';
 export interface ShatterConfig {
   /**
    * Number of columns in the fragmentation grid.
-   * 0 (default) = auto — columns derived from bone width to keep cells ~24px.
+   * 0 (default) = auto : columns derived from bone width to keep cells ~24px.
    * Any value > 0 = explicit column count.
    * Rows are always computed to keep squares roughly square.
    * Ignored when cellSize is set.
@@ -75,7 +75,7 @@ export interface ShatterConfig {
   gridSize?: number;
   /**
    * Fixed cell size in px. When set, every bone uses cells of this exact size
-   * regardless of its own dimensions — so narrow and wide bones always have
+   * regardless of its own dimensions : so narrow and wide bones always have
    * cells of the same physical size (counts differ naturally with area).
    * Takes priority over gridSize.
    */
@@ -88,7 +88,7 @@ export interface ShatterConfig {
 
 /**
  * Full configuration for skeleton appearance and behavior.
- * All fields are optional — defaults are applied from DEFAULT_SKELETON_CONFIG.
+ * All fields are optional : defaults are applied from DEFAULT_SKELETON_CONFIG.
  *
  * Priority chain:
  * skeletonConfig prop > SkeletonTheme > DEFAULT_SKELETON_CONFIG
@@ -101,13 +101,13 @@ export interface SkeletonConfig {
   /** Highlight color used during animation */
   highlightColor?: string;
   /**
-   * Animation speed — named preset or numeric multiplier.
+   * Animation speed : named preset or numeric multiplier.
    * 'slow' | 'normal' | 'rapid' or a custom number (1.0 = normal).
    */
   speed?: AnimationSpeed;
   /** Default corner radius for all bones */
   borderRadius?: number;
-  /** Animation direction — useful for RTL layouts */
+  /** Animation direction : useful for RTL layouts */
   direction?: 'ltr' | 'rtl';
   /** Minimum duration in ms the skeleton stays visible */
   minDuration?: number;
@@ -155,11 +155,11 @@ export interface MeasuredLayout {
 /**
  * Measurement strategy for per-element skeleton generation.
  *
- * 'auto'      — walks the React Fiber tree after the warmup render and measures
+ * 'auto'      : walks the React Fiber tree after the warmup render and measures
  *               each native element individually. One bone per leaf element.
  *               This is the v0.3 default.
  *
- * 'root-only' — measures only the root container. Produces a single block
+ * 'root-only' : measures only the root container. Produces a single block
  *               the size of the component. Identical to v0.2 behaviour.
  */
 export type MeasureStrategy = 'auto' | 'root-only';
@@ -185,7 +185,7 @@ export interface BoneStyleOverride {
 }
 
 /**
- * A manually declared skeleton bone — used with staticBones to bypass
+ * A manually declared skeleton bone : used with staticBones to bypass
  * layout measurement entirely. Useful for async components on web where
  * the warmup render would cause a blank frame.
  *
@@ -208,7 +208,7 @@ export interface StaticBone {
 
 /**
  * Options for withSkeleton (second argument).
- * All fields are optional — sensible defaults are applied.
+ * All fields are optional : sensible defaults are applied.
  */
 export interface WithSkeletonOptions {
   /**
@@ -232,7 +232,7 @@ export interface WithSkeletonOptions {
   /**
    * Style overrides for the root bone in root-only mode.
    * root-only cannot read borderRadius or explicit width from the wrapped
-   * component's style — use boneStyle to pass them explicitly.
+   * component's style : use boneStyle to pass them explicitly.
    * Has no effect in 'auto' mode (per-element styles are read from the
    * Fiber tree directly).
    */
@@ -251,7 +251,7 @@ export interface WithSkeletonOptions {
    */
   mockProps?: Record<string, unknown>;
   /**
-   * Predefined bones — bypasses layout measurement entirely.
+   * Predefined bones : bypasses layout measurement entirely.
    * No warmup render, no blank frame, no ResizeObserver.
    * Skeleton is shown immediately on first render.
    *

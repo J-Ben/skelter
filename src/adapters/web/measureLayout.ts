@@ -7,7 +7,7 @@ import type { BoneTree, ElementType, Bone } from '../../core/types';
  * Result returned by useMeasureLayout.
  */
 export interface WebMeasureLayoutResult {
-    /** The root BoneTree — null until first measurement */
+    /** The root BoneTree : null until first measurement */
     boneTree: BoneTree | null;
     /** Ref to attach to the root DOM element */
     rootRef: RefObject<HTMLElement | null>;
@@ -74,7 +74,7 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
  * - Uses ResizeObserver to detect layout changes automatically
  * - Uses getBoundingClientRect for accurate positioning
  * - Detects element types (image / text / view) from DOM tags
- * - SSR safe — no-op when ResizeObserver is unavailable
+ * - SSR safe : no-op when ResizeObserver is unavailable
  * - Cleans up observer on unmount
  *
  * @returns WebMeasureLayoutResult with boneTree, rootRef and isLayoutCaptured
