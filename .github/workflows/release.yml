@@ -31,15 +31,16 @@ jobs:
           # Full git history needed for changesets
           fetch-depth: 0
 
-      - name: Setup Node 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 8
+
+      - name: Setup Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install
@@ -50,14 +51,10 @@ jobs:
       - name: Create release PR or publish to npm
         uses: changesets/action@v1
         with:
-          # Command run when publishing
           publish: pnpm run release
-          # Commit message for version bumps
           commit: "chore: version packages"
-          # PR title
           title: "chore: version packages"
         env:
-          # GitHub token for creating PRs
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # npm token for publishing
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
