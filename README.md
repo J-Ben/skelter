@@ -361,7 +361,7 @@ Then anywhere in the tree, just pass `isLoading`:
 
 ### React Native : Fiber walk reads React internals
 
-Per-element measurement reads `_reactInternals` / `_reactFiber` from native View instances. These are undocumented React internals, stable across React 17–18. If the walk fails, react-zero-skeleton falls back to a single root bone automatically.
+Per-element measurement reads `_reactInternals` / `_reactFiber` from native View instances. These are undocumented React internals, stable across React 17-18. If the walk fails, react-zero-skeleton falls back to a single root bone automatically.
 
 ### React Native : wave / shiver need a gradient peer
 
