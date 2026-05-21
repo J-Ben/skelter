@@ -1,5 +1,11 @@
 # skelter
 
+## 0.6.0
+
+### Minor Changes
+
+- 6a7b7eb: feat: add slide animation, bones float up and fade in/out
+
 ## 0.5.1
 
 ### Patch Changes
