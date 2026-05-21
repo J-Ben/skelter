@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-**[→ Live demo & docs](https://j-ben.github.io/skelter-site/)**
+**[→ Live demo & docs](https://skelter.dev)**
 
 Wrap your component. Pass two props. react-zero-skeleton measures the real layout and generates one bone per element : automatically, always in sync. Works with **React Native** and **React (web)**.
 
