@@ -7,7 +7,7 @@ import React, {
   createContext,
   ComponentType,
 } from 'react';
-import { View, Animated, AccessibilityInfo } from 'react-native';
+import { View, Animated, Easing, AccessibilityInfo } from 'react-native';
 import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
 import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
@@ -203,6 +203,15 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         Animated.sequence([
           Animated.timing(animatedValue, { toValue: 1.0, duration: dur / 2, useNativeDriver: true }),
           Animated.timing(animatedValue, { toValue: 0.3, duration: dur / 2, useNativeDriver: true }),
+        ])
+      );
+    } else if (animation === 'slide') {
+      const dur = 1200 / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, { toValue: 1, duration: dur / 2, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(animatedValue, { toValue: 0, duration: dur / 2, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ])
       );
     } else {

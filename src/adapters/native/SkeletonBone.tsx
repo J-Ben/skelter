@@ -63,9 +63,22 @@ export const SkeletonBone = React.memo(function SkeletonBone({
 
   const isPulse = effectiveAnimation === 'pulse';
   const isShimmer = shimmerTranslateX !== null;
+  const isSlide = effectiveAnimation === 'slide';
 
-  // pulse: outer opacity is animated. shimmer/none: outer is static.
-  const outerAnimatedStyle = isPulse ? { opacity: animatedValue as unknown as number } : {};
+  const slideOpacity = useMemo(
+    () => isSlide ? animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.0] }) : null,
+    [isSlide, animatedValue]
+  );
+  const slideTranslateY = useMemo(
+    () => isSlide ? animatedValue.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) : null,
+    [isSlide, animatedValue]
+  );
+
+  const outerAnimatedStyle = isPulse
+    ? { opacity: animatedValue as unknown as number }
+    : isSlide && slideOpacity && slideTranslateY
+    ? { opacity: slideOpacity as unknown as number, transform: [{ translateY: slideTranslateY as unknown as number }] }
+    : {};
 
   return (
     <Animated.View
