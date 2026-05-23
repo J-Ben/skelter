@@ -5,6 +5,7 @@ import { createWaveAnimation } from './animations/wave';
 import { createShiverAnimation } from './animations/shiver';
 import { createShatterStyles } from './animations/shatter';
 import { createSlideAnimation } from './animations/slide';
+import { createBeatAnimation } from './animations/beat';
 
 /**
  * Props for web SkeletonBone.
@@ -133,6 +134,17 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   // Slide : bones float up 6px while fading in, sink back while fading out
   if (effectiveAnimation === 'slide') {
     const { style } = createSlideAnimation(config);
+    return (
+      <div
+        aria-hidden="true"
+        style={{ ...baseStyle, ...style }}
+      />
+    );
+  }
+
+  // Beat : double heartbeat — scale + opacity pulse
+  if (effectiveAnimation === 'beat') {
+    const { style } = createBeatAnimation(config);
     return (
       <div
         aria-hidden="true"

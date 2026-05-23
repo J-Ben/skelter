@@ -54,6 +54,7 @@ export type SkeletonAnimation =
   | 'shiver'   // Intense wave
   | 'shatter'  // Signature : grid fragmentation
   | 'slide'    // Bones float up and fade in/out
+  | 'beat'     // Double heartbeat pulse : scale + opacity
   | 'none';    // Static, no animation
 
 /**

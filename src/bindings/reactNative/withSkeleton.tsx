@@ -214,6 +214,12 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
           Animated.timing(animatedValue, { toValue: 0, duration: dur / 2, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ])
       );
+    } else if (animation === 'beat') {
+      const dur = 2000 / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.timing(animatedValue, { toValue: 1, duration: dur, useNativeDriver: true })
+      );
     } else {
       const dur = (animation === 'shiver' ? 800 : 1500) / speed;
       animatedValue.setValue(0);
