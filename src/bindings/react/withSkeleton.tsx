@@ -6,13 +6,14 @@ import React, {
   ComponentType,
   CSSProperties,
 } from 'react';
-import type { Bone, SkeletonConfig, SkeletonExit, StaticBone, WithSkeletonOptions } from '../../core/types';
-import { SKELETON_EXIT_MS } from '../../core/constants';
+import type { Bone, SkeletonConfig, SkeletonEnter, SkeletonExit, StaticBone, WithSkeletonOptions } from '../../core/types';
+import { SKELETON_ENTER_MS, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 
 type ExitPhase = 'visible' | 'exiting' | 'hidden';
+type EnterPhase = 'entering' | 'visible';
 
 function exitTransform(exit: SkeletonExit): string | undefined {
   if (exit === 'fadeUp')    return 'translateY(-10px)';
@@ -20,6 +21,37 @@ function exitTransform(exit: SkeletonExit): string | undefined {
   if (exit === 'fadeLeft')  return 'translateX(-10px)';
   if (exit === 'fadeRight') return 'translateX(10px)';
   return undefined;
+}
+
+function enterTransform(enter: SkeletonEnter): string | undefined {
+  if (enter === 'fadeUp')    return 'translateY(8px)';
+  if (enter === 'fadeDown')  return 'translateY(-8px)';
+  if (enter === 'fadeLeft')  return 'translateX(8px)';
+  if (enter === 'fadeRight') return 'translateX(-8px)';
+  return undefined;
+}
+
+function useEnterPhase(showOverlay: boolean, enter: SkeletonEnter): EnterPhase {
+  const [phase, setPhase] = useState<EnterPhase>('visible');
+  const contentWasShown = useRef(false);
+  const prev = useRef(showOverlay);
+
+  useEffect(() => {
+    if (!showOverlay && prev.current) contentWasShown.current = true;
+
+    if (showOverlay && !prev.current) {
+      if (enter !== 'none' && contentWasShown.current) {
+        setPhase('entering');
+        const t = setTimeout(() => setPhase('visible'), SKELETON_ENTER_MS);
+        prev.current = showOverlay;
+        return () => clearTimeout(t);
+      }
+      setPhase('visible');
+    }
+    prev.current = showOverlay;
+  }, [showOverlay, enter]);
+
+  return phase;
 }
 
 function useExitPhase(isSkeletonVisible: boolean, isLoading: boolean, exit: SkeletonExit): ExitPhase {
@@ -152,10 +184,13 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
     boneTree,
   });
 
+  const enter = mergedConfig.enter;
   const exit = mergedConfig.exit;
   const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
   const isExiting = phase === 'exiting';
   const showOverlay = phase !== 'hidden' && !isSSR;
+  const enterPhase = useEnterPhase(showOverlay, enter);
+  const isEntering = enterPhase === 'entering';
 
   const overlayStyle: CSSProperties = {
     position: 'absolute',
@@ -163,6 +198,11 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
     left: 0,
     width: boneTree.layout.width,
     height: boneTree.layout.height,
+    ...(isEntering && {
+      opacity: 0,
+      transform: enterTransform(enter),
+      transition: `opacity ${SKELETON_ENTER_MS}ms ease, transform ${SKELETON_ENTER_MS}ms ease`,
+    }),
     ...(isExiting && {
       opacity: 0,
       transform: exitTransform(exit),
@@ -170,9 +210,12 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
     }),
   };
 
+  const revealOnExit = mergedConfig.revealOnExit;
+  const showContent = phase === 'hidden' || (revealOnExit && phase === 'exiting');
+
   return (
     <div style={{ position: 'relative' }}>
-      {phase === 'hidden' && <Component {...(componentProps as P)} />}
+      {showContent && <Component {...(componentProps as P)} />}
 
       {showOverlay && (
         <div style={overlayStyle} aria-hidden="true" role="presentation">
@@ -213,10 +256,13 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     boneTree,
   });
 
+  const enter = mergedConfig.enter;
   const exit = mergedConfig.exit;
   const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
   const isExiting = phase === 'exiting';
   const showOverlay = phase !== 'hidden' && isLayoutCaptured && !isSSR;
+  const enterPhase = useEnterPhase(showOverlay, enter);
+  const isEntering = enterPhase === 'entering';
 
   // Keep the last non-empty bones so they remain visible during the exit phase.
   // useSkeleton clears bones as soon as isSkeletonVisible is false, but we need
@@ -225,11 +271,14 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   if (bones.length > 0) lastBonesRef.current = bones;
   const displayBones = showOverlay ? lastBonesRef.current : [];
 
+  const revealOnExit = mergedConfig.revealOnExit;
   // isLoading hides on both server AND client so SSR HTML matches first client
   // render : no hydration mismatch, no content bleeding through shatter cells.
-  // Keep content hidden during exit phase too so real content only appears after
-  // the skeleton has fully animated out.
-  const hidden = isLoading || (phase !== 'hidden' && isLayoutCaptured && !isSSR);
+  // With revealOnExit, content is visible during the exiting phase so the
+  // skeleton fades out over the real content.
+  const hidden = isLoading ||
+    (phase === 'visible' && isLayoutCaptured && !isSSR) ||
+    (!revealOnExit && phase === 'exiting' && isLayoutCaptured && !isSSR);
 
   const overlayStyle: CSSProperties = {
     position: 'absolute',
@@ -237,6 +286,11 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     left: 0,
     width: '100%',
     height: '100%',
+    ...(isEntering && {
+      opacity: 0,
+      transform: enterTransform(enter),
+      transition: `opacity ${SKELETON_ENTER_MS}ms ease, transform ${SKELETON_ENTER_MS}ms ease`,
+    }),
     ...(isExiting && {
       opacity: 0,
       transform: exitTransform(exit),

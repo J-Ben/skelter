@@ -22,6 +22,18 @@ export interface Bone {
 }
 
 /**
+ * Enter animation played when the skeleton first appears.
+ *
+ * 'fade'      : opacity fade-in (150 ms)
+ * 'fadeUp'    : fade + rise upward
+ * 'fadeDown'  : fade + drop downward
+ * 'fadeLeft'  : fade + slide from right
+ * 'fadeRight' : fade + slide from left
+ * 'none'      : instant appearance (default)
+ */
+export type SkeletonEnter = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'none';
+
+/**
  * Exit animation played when the skeleton disappears.
  *
  * 'fade'      : opacity fade-out (default)
@@ -114,6 +126,17 @@ export interface SkeletonConfig {
   minDuration?: number;
   /** If true, skeleton is never displayed regardless of isLoading */
   disabled?: boolean;
+  /**
+   * Enter animation played when the skeleton first appears.
+   * Default: 'none' (instant appearance).
+   */
+  enter?: SkeletonEnter;
+  /**
+   * When true, real content becomes visible underneath the skeleton
+   * while the exit animation plays — skeleton fades out revealing content.
+   * Default: false (content appears only after exit completes).
+   */
+  revealOnExit?: boolean;
   /**
    * Exit animation played when the skeleton disappears.
    * Default: 'fade' (300 ms opacity fade-out).
