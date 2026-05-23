@@ -1,5 +1,13 @@
 # skelter
 
+## 0.8.0
+
+### Minor Changes
+
+- 7068eba: Add `beat` animation: a double heartbeat pattern combining scale and opacity.
+  Two quick beats (stronger then softer) followed by a long rest, matching a real cardiac rhythm.
+  Works on web (CSS keyframes) and React Native (Animated API, useNativeDriver).
+
 ## 0.7.0
 
 ### Minor Changes
