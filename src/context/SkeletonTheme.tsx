@@ -1,7 +1,7 @@
 import React, { useMemo, useContext } from 'react';
 import { SkeletonContext } from './SkeletonContext';
 import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
-import type { SkeletonConfig, SkeletonAnimation, SkeletonExit } from '../core/types';
+import type { SkeletonConfig, SkeletonAnimation, SkeletonEnter, SkeletonExit } from '../core/types';
 
 /**
  * SSR detection : disables auto mode child interception on the server.
@@ -37,8 +37,15 @@ export interface SkeletonThemeProps {
   imageConfig?: SkeletonConfig['imageConfig'];
   /** Maximum bones rendered in FlatList : 0 = unlimited */
   maxBonesInList?: number;
+  /** Enter animation when the skeleton first appears : default 'none' */
+  enter?: SkeletonEnter;
   /** Exit animation when the skeleton disappears : default 'fade' */
   exit?: SkeletonExit;
+  /**
+   * When true, real content becomes visible underneath the skeleton
+   * while the exit animation plays. Default: false.
+   */
+  revealOnExit?: boolean;
   /**
    * If true, automatically injects hasSkeleton={true} on all
    * child components : zero touch required on individual components.
@@ -147,7 +154,9 @@ export function SkeletonTheme({
   shatterConfig,
   imageConfig,
   maxBonesInList,
+  enter,
   exit,
+  revealOnExit,
   auto = false,
   exclude = [],
   children,
@@ -169,7 +178,9 @@ export function SkeletonTheme({
       ...(minDuration !== undefined && { minDuration }),
       ...(disabled !== undefined && { disabled }),
       ...(maxBonesInList !== undefined && { maxBonesInList }),
+      ...(enter !== undefined && { enter }),
       ...(exit !== undefined && { exit }),
+      ...(revealOnExit !== undefined && { revealOnExit }),
       ...(shatterConfig !== undefined && {
         shatterConfig: {
           ...DEFAULT_SKELETON_CONFIG.shatterConfig,
@@ -187,7 +198,7 @@ export function SkeletonTheme({
       parentContext.config,
       animation, color, highlightColor, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList, exit,
+      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit,
     ]
   );
 

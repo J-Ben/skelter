@@ -1,5 +1,6 @@
 import type { AnimationSpeed, SkeletonConfig } from './types';
 
+export const SKELETON_ENTER_MS = 150;
 export const SKELETON_EXIT_MS = 300;
 
 /**
@@ -28,7 +29,9 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   },
   /** 0 = unlimited */
   maxBonesInList: 0,
+  enter: 'none' as const,
   exit: 'fade' as const,
+  revealOnExit: false,
 };
 
 /**
