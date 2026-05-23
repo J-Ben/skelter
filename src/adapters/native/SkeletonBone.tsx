@@ -64,6 +64,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   const isPulse = effectiveAnimation === 'pulse';
   const isShimmer = shimmerTranslateX !== null;
   const isSlide = effectiveAnimation === 'slide';
+  const isBeat = effectiveAnimation === 'beat';
 
   const slideOpacity = useMemo(
     () => isSlide ? animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.0] }) : null,
@@ -74,10 +75,29 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     [isSlide, animatedValue]
   );
 
+  const beatScale = useMemo(
+    () => isBeat ? animatedValue.interpolate({
+      inputRange: [0, 0.04, 0.08, 0.12, 0.16, 1],
+      outputRange: [1, 1.04, 1, 1.02, 1, 1],
+      extrapolate: 'clamp',
+    }) : null,
+    [isBeat, animatedValue]
+  );
+  const beatOpacity = useMemo(
+    () => isBeat ? animatedValue.interpolate({
+      inputRange: [0, 0.04, 0.08, 0.12, 0.16, 1],
+      outputRange: [1, 0.7, 1, 0.8, 1, 1],
+      extrapolate: 'clamp',
+    }) : null,
+    [isBeat, animatedValue]
+  );
+
   const outerAnimatedStyle = isPulse
     ? { opacity: animatedValue as unknown as number }
     : isSlide && slideOpacity && slideTranslateY
     ? { opacity: slideOpacity as unknown as number, transform: [{ translateY: slideTranslateY as unknown as number }] }
+    : isBeat && beatScale && beatOpacity
+    ? { opacity: beatOpacity as unknown as number, transform: [{ scale: beatScale as unknown as number }] }
     : {};
 
   return (
