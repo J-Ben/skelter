@@ -9,7 +9,7 @@
  * Falls back to null if fibers are unavailable (hermetic envs, test runners).
  */
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, UIManager } from 'react-native';
 import type { MeasuredLayout, ElementType } from '../../core/types';
 
 // ─── Leaf registry ───────────────────────────────────────────────────────────
@@ -66,11 +66,16 @@ function getElementType(typeName: string): ElementType {
 
 function getTypeName(fiber: Record<string, unknown>): string {
   const t = fiber.type;
-  return typeof t === 'string'
-    ? t
-    : (t as { displayName?: string; name?: string })?.displayName ??
-      (t as { name?: string })?.name ??
-      '';
+  if (typeof t === 'string') return t;
+  // Fabric RN 0.71+: fiber.type is a viewConfig object, not a string.
+  // The component name lives at viewConfig.uiViewClassName ("RCTView", "RCTText", etc.)
+  if (t && typeof t === 'object') {
+    const vc = t as Record<string, unknown>;
+    if (typeof vc.uiViewClassName === 'string') return vc.uiViewClassName;
+  }
+  return (t as { displayName?: string; name?: string })?.displayName ??
+    (t as { name?: string })?.name ??
+    '';
 }
 
 /**
@@ -86,7 +91,7 @@ function hasAnyHostDescendant(
   while (child) {
     const name = getTypeName(child);
     if (!excludeSet.has(name)) {
-      if (typeof child.type === 'string' && isKnownHost(name)) return true;
+      if (((child.tag as number) === 5 || typeof child.type === 'string') && isKnownHost(name)) return true;
       if (hasAnyHostDescendant(child, excludeSet)) return true;
     }
     child = child.sibling as Record<string, unknown> | null;
@@ -96,11 +101,19 @@ function hasAnyHostDescendant(
 
 // ─── Fiber access ────────────────────────────────────────────────────────────
 
-/** Property names used by React versions to expose the internal Fiber. */
+/**
+ * Property names used by React versions to expose the internal Fiber.
+ *
+ * Old Arch / React class components : _reactInternals
+ * Old Arch / React host components  : _reactFiber
+ * DEV inspector handle              : __internalFiberInstanceHandleDEV
+ * Fabric (RN 0.71+) public instance : __internalInstanceHandle
+ */
 const FIBER_KEYS = [
   '_reactInternals',
   '_reactFiber',
   '__internalFiberInstanceHandleDEV',
+  '__internalInstanceHandle',
 ] as const;
 
 function getFiber(instance: object): unknown {
@@ -136,6 +149,7 @@ function walkFiber(
   const fiberType = fiber.type;
   const typeName = getTypeName(fiber);
 
+
   if (excludeSet.has(typeName)) {
     // Excluded : traverse siblings but not children
     if (fiber.sibling) {
@@ -144,7 +158,10 @@ function walkFiber(
     return;
   }
 
-  if (typeof fiberType === 'string' && isKnownHost(typeName)) {
+  // fiber.tag === 5 is HostComponent in both Old and New Architecture.
+  // Fabric RN 0.71+ uses a viewConfig object as fiber.type instead of a string.
+  const isHostFiber = (fiber.tag as number) === 5 || typeof fiberType === 'string';
+  if (isHostFiber && isKnownHost(typeName)) {
     // Decide whether to emit a bone for this node.
     // Content/interactive components are always bones.
     // Container Views are bones only when they have no host descendants
@@ -158,8 +175,14 @@ function walkFiber(
 
       if (typeof stateNode === 'number') {
         nativeTag = stateNode;
-      } else if (stateNode && typeof stateNode === 'object' && 'nativeTag' in stateNode) {
-        nativeTag = (stateNode as { nativeTag: number }).nativeTag;
+      } else if (stateNode && typeof stateNode === 'object') {
+        if ('nativeTag' in stateNode) {
+          nativeTag = (stateNode as { nativeTag: number }).nativeTag;
+        } else if ('canonical' in stateNode) {
+          // Fabric: stateNode.canonical.nativeTag
+          const c = (stateNode as { canonical?: { nativeTag?: number } }).canonical;
+          nativeTag = c?.nativeTag ?? 0;
+        }
       }
 
       const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
@@ -200,26 +223,43 @@ type MeasureCallback = (
 
 /**
  * Measures a native node.
- * Prefers `stateNode.measure()` (works on both Old and New Arch).
- * Falls back to `UIManager.measure(nativeTag, cb)` for old RN versions.
+ *
+ * Priority order:
+ * 1. stateNode.measure()          — Old Arch public instance or host component
+ * 2. canonical.publicInstance     — Fabric: lazily-created public instance
+ * 3. UIManager.measure(nativeTag) — fallback for both architectures
  */
 function measureNode(node: CollectedNode, callback: MeasureCallback): void {
   const sn = node.stateNode;
+
+  // Path 1 : stateNode is a public instance with .measure() (Old Arch)
   if (sn && typeof (sn as Record<string, unknown>).measure === 'function') {
     (sn as { measure: (cb: MeasureCallback) => void }).measure(callback);
     return;
   }
+
+  // Path 2 : Fabric — stateNode.canonical.publicInstance.measure()
+  if (sn && typeof sn === 'object') {
+    const canonical = (sn as Record<string, unknown>).canonical as Record<string, unknown> | undefined;
+    if (canonical) {
+      const pub = canonical.publicInstance as { measure?: (cb: MeasureCallback) => void } | undefined;
+      if (pub?.measure) {
+        pub.measure(callback);
+        return;
+      }
+    }
+  }
+
+  // Path 3 : UIManager bridge fallback (works on both Old and New Arch)
   if (node.nativeTag > 0) {
-    // Old arch UIManager path : dynamic require to avoid breaking SSR/web
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { UIManager } = require('react-native');
       UIManager.measure(node.nativeTag, callback);
     } catch {
       callback(0, 0, 0, 0, 0, 0);
     }
     return;
   }
+
   callback(0, 0, 0, 0, 0, 0);
 }
 
@@ -266,6 +306,7 @@ export function measureFiberLeaves(
       resolve(null);
       return;
     }
+
 
     if (collected.length === 0) {
       resolve(null);
