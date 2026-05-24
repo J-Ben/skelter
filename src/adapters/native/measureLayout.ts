@@ -1,4 +1,5 @@
 import { useRef, useCallback, useReducer, useState } from 'react';
+import { UIManager } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy, BoneStyleOverride } from '../../core/types';
 import { measureFiberLeaves } from './fiberWalker';
@@ -156,8 +157,22 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
       const instance = warmupRef.current;
       if (!instance) return;
 
-      // Get root's screen position so we can compute relative positions
+      // Get root's screen position so we can compute relative positions.
+      // Prefer UIManager.measure(nativeTag) to match the same coordinate system
+      // used for child measurements — mixing Fabric fabricMeasure and UIManager
+      // on the same device can produce a systematic offset.
       const measureRoot = (cb: (pageX: number, pageY: number) => void) => {
+        const nativeTag = (instance as Record<string, unknown>).__nativeTag as number | undefined;
+        if (nativeTag != null && nativeTag > 0) {
+          try {
+            UIManager.measure(nativeTag, (_x: number, _y: number, _w: number, _h: number, pageX: number, pageY: number) => {
+              cb(pageX, pageY);
+            });
+            return;
+          } catch {
+            // fall through
+          }
+        }
         if (typeof (instance as { measure?: unknown }).measure === 'function') {
           (instance as { measure: (cb: (x: number, y: number, w: number, h: number, px: number, py: number) => void) => void }).measure(
             (_x, _y, _w, _h, pageX, pageY) => cb(pageX, pageY)

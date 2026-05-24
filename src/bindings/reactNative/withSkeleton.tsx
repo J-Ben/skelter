@@ -46,7 +46,7 @@ type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle'>> & { b
 /** Default WithSkeletonOptions applied when no second argument is passed. */
 const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   measureStrategy: 'auto',
-  maxDepth: 8,
+  maxDepth: 20,
   exclude: [],
   mockProps: {},
   staticBones: [],
