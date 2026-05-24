@@ -121,13 +121,18 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
-  // Drip : vertical shimmer overlay (top to bottom)
+  // Drip : background-position sweep, staggered per bone.y so the highlight
+  // flows top→bottom through the component rather than all bones pulsing together.
   if (effectiveAnimation === 'drip') {
-    const { style } = createDripAnimation(config);
+    const { style, duration } = createDripAnimation(config);
+    // delay puts bone.y=0 at phase 50% (highlight visible) at T=0.
+    // Each px of y adds 3ms so lower bones light up after upper ones.
+    const animationDelay = `${Math.round(bone.y * 3 - duration / 2)}ms`;
     return (
-      <div aria-hidden="true" style={baseStyle}>
-        <div style={style} />
-      </div>
+      <div
+        aria-hidden="true"
+        style={{ ...baseStyle, ...style, animationDelay }}
+      />
     );
   }
 
