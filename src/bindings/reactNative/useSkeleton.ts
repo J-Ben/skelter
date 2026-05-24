@@ -77,6 +77,19 @@ export function useSkeleton({
     return false;
   });
 
+  // Track previous isLoading so we can detect transitions during render.
+  // When isLoading becomes true, update isSkeletonVisible in the same render
+  // pass (before paint) to avoid a one-frame flash of placeholder content.
+  // This uses the React-recommended "setState during render" pattern.
+  const [prevIsLoading, setPrevIsLoading] = useState(isLoading);
+  if (prevIsLoading !== isLoading) {
+    setPrevIsLoading(isLoading);
+    if (isLoading && hasSkeleton && !mergedConfig.disabled && !isSkeletonVisible) {
+      everSeenLoadingRef.current = true;
+      setIsSkeletonVisible(true);
+    }
+  }
+
   const minDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingStartTimeRef = useRef<number | null>(null);
 
