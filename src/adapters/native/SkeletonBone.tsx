@@ -41,15 +41,12 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   const effectiveAnimation = reduceMotion ? 'none' : config.animation;
 
   /**
-   * Shimmer interpolation for wave / shiver.
-   * Computed synchronously (useMemo) so it is available on the first render :
-   * no ref-hack, no one-frame flicker.
+   * Shimmer interpolation for wave / shiver (horizontal) and drip (vertical).
+   * Computed synchronously (useMemo) so it is available on the first render.
    *
-   * wave:   translateX [-width,  +width]  (1× amplitude)
-   * shiver: translateX [-1.5w, +1.5w]    (1.5× amplitude, faster)
-   *
-   * animatedValue loops 0→1 (driven by SkeletonRenderer),
-   * this interpolation maps it to pixel translation.
+   * wave:   translateX [-width,  +width]
+   * shiver: translateX [-1.5w, +1.5w]
+   * drip:   translateY [-height, +height]
    */
   const shimmerTranslateX = useMemo(() => {
     if (effectiveAnimation !== 'wave' && effectiveAnimation !== 'shiver') return null;
@@ -61,8 +58,16 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     });
   }, [effectiveAnimation, config.direction, bone.width, animatedValue]);
 
+  const shimmerTranslateY = useMemo(() => {
+    if (effectiveAnimation !== 'drip') return null;
+    return animatedValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-bone.height, bone.height],
+    });
+  }, [effectiveAnimation, bone.height, animatedValue]);
+
   const isPulse = effectiveAnimation === 'pulse';
-  const isShimmer = shimmerTranslateX !== null;
+  const isShimmer = shimmerTranslateX !== null || shimmerTranslateY !== null;
   const isSlide = effectiveAnimation === 'slide';
   const isBeat = effectiveAnimation === 'beat';
 
@@ -122,8 +127,10 @@ export const SkeletonBone = React.memo(function SkeletonBone({
         <GradientShimmer
           color={config.color}
           highlightColor={config.highlightColor}
-          translateX={shimmerTranslateX}
+          translateX={shimmerTranslateX ?? undefined}
+          translateY={shimmerTranslateY ?? undefined}
           boneWidth={bone.width}
+          boneHeight={bone.height}
         />
       )}
     </Animated.View>
