@@ -1,5 +1,11 @@
 # skelter
 
+## 0.9.0
+
+### Minor Changes
+
+- 7d669eb: Add `drip` animation: a vertical shimmer that sweeps top-to-bottom with a subtle skew. Works on web (CSS keyframes) and React Native (Animated + LinearGradient).
+
 ## 0.8.0
 
 ### Minor Changes
