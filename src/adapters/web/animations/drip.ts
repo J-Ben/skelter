@@ -6,6 +6,7 @@ export interface DripAnimationResult {
   animationName: string;
   keyframes: string;
   style: CSSProperties;
+  duration: number;
 }
 
 const injectedKeyframes = new Set<string>();
@@ -26,10 +27,13 @@ export function createDripAnimation(
   const duration = 1800 / resolveSpeed(config.speed);
   const animationName = `skelter-drip-${Math.round(duration)}`;
 
+  // background-position sweeps the gradient (3× bone height) from top to bottom.
+  // At 100% the highlight is above the bone (hidden), at 0% it is below (hidden).
+  // The highlight band sweeps top→bottom and spans the full bone width.
   const keyframes = `
     @keyframes ${animationName} {
-      0%   { transform: translateY(-100%) skewY(-5deg); }
-      100% { transform: translateY(100%) skewY(-5deg); }
+      0%   { background-position: 50% 100%; }
+      100% { background-position: 50% 0%; }
     }
   `;
 
@@ -37,15 +41,17 @@ export function createDripAnimation(
 
   const style: CSSProperties = {
     animation: `${animationName} ${duration}ms linear infinite`,
-    background: `linear-gradient(
+    backgroundImage: `linear-gradient(
       180deg,
-      transparent 0%,
+      ${config.color} 0%,
+      ${config.color} 30%,
       ${config.highlightColor} 50%,
-      transparent 100%
+      ${config.color} 70%,
+      ${config.color} 100%
     )`,
-    position: 'absolute',
-    inset: 0,
+    backgroundSize: '100% 300%',
+    backgroundRepeat: 'no-repeat',
   };
 
-  return { animationName, keyframes, style };
+  return { animationName, keyframes, style, duration };
 }
