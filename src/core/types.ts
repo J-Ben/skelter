@@ -52,6 +52,7 @@ export type SkeletonAnimation =
   | 'pulse'    // Soft fade in/out
   | 'wave'     // Shimmer left to right
   | 'shiver'   // Intense wave
+  | 'drip'     // Shimmer top to bottom
   | 'shatter'  // Signature : grid fragmentation
   | 'slide'    // Bones float up and fade in/out
   | 'beat'     // Double heartbeat pulse : scale + opacity

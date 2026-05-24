@@ -31,32 +31,36 @@ try {
 export interface GradientShimmerProps {
   color: string;
   highlightColor: string;
-  /** Interpolated translateX driven by the shared animatedValue */
-  translateX: Animated.AnimatedInterpolation<number>;
+  /** Interpolated translateX driven by the shared animatedValue (horizontal shimmer) */
+  translateX?: Animated.AnimatedInterpolation<number>;
+  /** Interpolated translateY driven by the shared animatedValue (vertical shimmer) */
+  translateY?: Animated.AnimatedInterpolation<number>;
   boneWidth: number;
+  boneHeight?: number;
 }
 
 /**
  * Renders a gradient highlight that sweeps across a skeleton bone.
  *
  * Requires expo-linear-gradient or react-native-linear-gradient as a peer.
- * If neither is available, warns once and renders nothing : the bone still
- * shows its base color (same visual as 0.1.x).
+ * If neither is available, warns once and renders nothing.
  *
- * The gradient is boneWidth wide and translates from -boneWidth to +boneWidth,
- * clipped by the parent bone's overflow:hidden.
+ * Horizontal (wave/shiver): translateX sweeps left→right, skewX(-15deg).
+ * Vertical (drip): translateY sweeps top→bottom, skewY(-5deg).
  */
 export function GradientShimmer({
   color,
   highlightColor,
   translateX,
+  translateY,
   boneWidth,
+  boneHeight,
 }: GradientShimmerProps) {
   if (!LinearGradient) {
     if (!warned) {
       warned = true;
       console.warn(
-        '[skelter] wave/shiver shimmer requires expo-linear-gradient or ' +
+        '[skelter] wave/shiver/drip shimmer requires expo-linear-gradient or ' +
           'react-native-linear-gradient. Install one as a peer dependency to ' +
           'enable the gradient highlight. Falling back to solid bone.'
       );
@@ -66,6 +70,28 @@ export function GradientShimmer({
 
   const Gradient = LinearGradient;
 
+  if (translateY != null) {
+    return (
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          height: boneHeight ?? boneWidth,
+          transform: [{ translateY }, { skewY: '-5deg' }],
+        }}
+      >
+        <Gradient
+          colors={[color, highlightColor, color]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View
       style={{
@@ -74,7 +100,7 @@ export function GradientShimmer({
         bottom: 0,
         left: 0,
         width: boneWidth,
-        transform: [{ translateX }, { skewX: '-15deg' }],
+        transform: [{ translateX: translateX! }, { skewX: '-15deg' }],
       }}
     >
       <Gradient

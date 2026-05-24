@@ -6,6 +6,7 @@ import { createShiverAnimation } from './animations/shiver';
 import { createShatterStyles } from './animations/shatter';
 import { createSlideAnimation } from './animations/slide';
 import { createBeatAnimation } from './animations/beat';
+import { createDripAnimation } from './animations/drip';
 
 /**
  * Props for web SkeletonBone.
@@ -113,6 +114,16 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   // Shiver : intense shimmer overlay
   if (effectiveAnimation === 'shiver') {
     const { style } = createShiverAnimation(config);
+    return (
+      <div aria-hidden="true" style={baseStyle}>
+        <div style={style} />
+      </div>
+    );
+  }
+
+  // Drip : vertical shimmer overlay (top to bottom)
+  if (effectiveAnimation === 'drip') {
+    const { style } = createDripAnimation(config);
     return (
       <div aria-hidden="true" style={baseStyle}>
         <div style={style} />
