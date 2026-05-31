@@ -145,6 +145,14 @@ export interface SkeletonConfig {
    * Set to 'none' to restore the v0.4 instant-removal behaviour.
    */
   exit?: SkeletonExit;
+  /**
+   * Cascade stagger delay in ms per pixel of vertical position.
+   * When > 0, each bone's animation is delayed by bone.y × cascade ms,
+   * creating a top-to-bottom sequential wave effect.
+   * Example: cascade={3} → a bone at y=100px starts 300ms after a bone at y=0.
+   * Default: 0 (all bones animate simultaneously).
+   */
+  cascade?: number;
   /** Shatter animation configuration */
   shatterConfig?: ShatterConfig;
   /** Image-specific configuration */

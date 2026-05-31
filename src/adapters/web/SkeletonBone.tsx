@@ -77,57 +77,70 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   // Parent must be transparent: squares fade against page background,
   // not against another bone-colored div (which would make the animation invisible).
   if (effectiveAnimation === 'shatter' && shatterSquares) {
+    const cascadeOffset = config.cascade > 0 ? Math.round(bone.y * config.cascade) : 0;
     return (
       <div
         aria-hidden="true"
         style={{ ...baseStyle, backgroundColor: 'transparent' }}
       >
-        {shatterSquares.map((square, index) => (
-          <div
-            key={`shatter-${index}`}
-            style={{
-              position: 'absolute',
-              left: square.x,
-              top: square.y,
-              width: square.width,
-              height: square.height,
-              borderRadius: bone.borderRadius || config.borderRadius,
-              backgroundColor: config.color,
-              ...square.style,
-            }}
-          />
-        ))}
+        {shatterSquares.map((square, index) => {
+          const baseDelay = parseInt(square.style.animationDelay as string ?? '0') || 0;
+          const squareStyle = cascadeOffset > 0
+            ? { ...square.style, animationDelay: `${baseDelay + cascadeOffset}ms` }
+            : square.style;
+          return (
+            <div
+              key={`shatter-${index}`}
+              style={{
+                position: 'absolute',
+                left: square.x,
+                top: square.y,
+                width: square.width,
+                height: square.height,
+                borderRadius: bone.borderRadius || config.borderRadius,
+                backgroundColor: config.color,
+                ...squareStyle,
+              }}
+            />
+          );
+        })}
       </div>
     );
   }
 
-  // Wave : shimmer overlay
+  // Wave : shimmer overlay — cascade delay applied to the inner animated div
   if (effectiveAnimation === 'wave') {
     const { style } = createWaveAnimation(config);
+    const innerStyle = config.cascade > 0
+      ? { ...style, animationDelay: `${Math.round(bone.y * config.cascade)}ms` }
+      : style;
     return (
       <div aria-hidden="true" style={baseStyle}>
-        <div style={style} />
+        <div style={innerStyle} />
       </div>
     );
   }
 
-  // Shiver : intense shimmer overlay
+  // Shiver : intense shimmer overlay — cascade delay applied to the inner animated div
   if (effectiveAnimation === 'shiver') {
     const { style } = createShiverAnimation(config);
+    const innerStyle = config.cascade > 0
+      ? { ...style, animationDelay: `${Math.round(bone.y * config.cascade)}ms` }
+      : style;
     return (
       <div aria-hidden="true" style={baseStyle}>
-        <div style={style} />
+        <div style={innerStyle} />
       </div>
     );
   }
 
   // Drip : background-position sweep, staggered per bone.y so the highlight
   // flows top→bottom through the component rather than all bones pulsing together.
+  // When cascade > 0, use config.cascade as the ms/px rate instead of the hardcoded 3.
   if (effectiveAnimation === 'drip') {
     const { style, duration } = createDripAnimation(config);
-    // delay puts bone.y=0 at phase 50% (highlight visible) at T=0.
-    // Each px of y adds 3ms so lower bones light up after upper ones.
-    const animationDelay = `${Math.round(bone.y * 3 - duration / 2)}ms`;
+    const msPerPx = config.cascade > 0 ? config.cascade : 3;
+    const animationDelay = `${Math.round(bone.y * msPerPx - duration / 2)}ms`;
     return (
       <div
         aria-hidden="true"
@@ -136,13 +149,16 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     );
   }
 
+  // Cascade stagger delay applied to pulse / slide / beat.
+  const cascadeDelay = config.cascade > 0 ? `${Math.round(bone.y * config.cascade)}ms` : undefined;
+
   // Pulse : opacity animation on the bone itself
   if (effectiveAnimation === 'pulse') {
     const { style } = createPulseAnimation(config);
     return (
       <div
         aria-hidden="true"
-        style={{ ...baseStyle, ...style }}
+        style={{ ...baseStyle, ...style, ...(cascadeDelay && { animationDelay: cascadeDelay }) }}
       />
     );
   }
@@ -153,7 +169,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     return (
       <div
         aria-hidden="true"
-        style={{ ...baseStyle, ...style }}
+        style={{ ...baseStyle, ...style, ...(cascadeDelay && { animationDelay: cascadeDelay }) }}
       />
     );
   }
@@ -164,7 +180,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     return (
       <div
         aria-hidden="true"
-        style={{ ...baseStyle, ...style }}
+        style={{ ...baseStyle, ...style, ...(cascadeDelay && { animationDelay: cascadeDelay }) }}
       />
     );
   }
