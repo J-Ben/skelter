@@ -19,6 +19,10 @@ export interface Bone {
   borderRadius: number;
   /** The type of the original UI element */
   type: ElementType;
+  /** Opacity override (0–1). Used for container bones rendered behind their children. */
+  opacity?: number;
+  /** When true, the bone is rendered without animation (static placeholder). */
+  isStatic?: boolean;
 }
 
 /**
@@ -56,6 +60,7 @@ export type SkeletonAnimation =
   | 'shatter'  // Signature : grid fragmentation
   | 'slide'    // Bones float up and fade in/out
   | 'beat'     // Double heartbeat pulse : scale + opacity
+  | 'shaker'   // Rapid horizontal vibration burst followed by a rest
   | 'none';    // Static, no animation
 
 /**
@@ -184,6 +189,12 @@ export interface MeasuredLayout {
   type: ElementType;
   /** Corner radius read from StyleSheet.flatten(style).borderRadius */
   borderRadius?: number;
+  /** True when the element is explicitly marked as a SkeletonBox */
+  isSkeletonBox?: boolean;
+  /** True when the SkeletonBox should not animate (static prop) */
+  isSkeletonBoxStatic?: boolean;
+  /** True when the element is marked SkeletonIgnore — skip measurement entirely */
+  isSkeletonIgnore?: boolean;
 }
 
 /**

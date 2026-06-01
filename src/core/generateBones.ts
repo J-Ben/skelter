@@ -27,11 +27,13 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
 
   const isLeaf = node.children.length === 0;
   const isContent = node.layout.type === 'text' || node.layout.type === 'image';
+  // Explicitly marked SkeletonBox: emit the box at reduced opacity first
+  // (background layer), then recurse so children appear on top at full opacity.
+  const isSkeletonBox = node.layout.isSkeletonBox === true;
+  // SkeletonIgnore nodes — skip entirely (no bone, no recursion)
+  if (node.layout.isSkeletonIgnore) return;
 
   if (isLeaf || isContent) {
-    // Leaf node or a content element (text/image) : emit a bone.
-    // Text elements are the atomic unit: don't recurse into inline children
-    // (spans, <a> inside <p>, etc.) : the element itself is the bone.
     bones.push({
       x: node.layout.x,
       y: node.layout.y,
@@ -40,6 +42,20 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
       borderRadius: node.layout.borderRadius ?? 0,
       type: node.layout.type,
     });
+  } else if (isSkeletonBox) {
+    bones.push({
+      x: node.layout.x,
+      y: node.layout.y,
+      width: node.layout.width,
+      height: node.layout.height,
+      borderRadius: node.layout.borderRadius ?? 0,
+      type: node.layout.type,
+      opacity: 0.25,
+      isStatic: true,
+    });
+    for (const child of node.children) {
+      collectBones(child, bones);
+    }
   } else {
     // Container view with children : skip generating a bone for the container
     // itself (avoids a large gray block covering all children) and recurse.

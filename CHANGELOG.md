@@ -1,5 +1,19 @@
 # skelter
 
+## 1.1.0
+
+### Minor Changes
+
+- Add shaker animation, SkeletonBox, and SkeletonIgnore.
+
+  **shaker**: a rapid horizontal vibration burst followed by a long rest - like a nervous tremor. The shake occupies the first ~20% of the cycle; the remaining ~80% is a stationary hold. Works on web (CSS keyframes) and React Native (Animated API).
+
+  **SkeletonBox**: wraps containers that are visually meaningful shapes (stat cards, chips, badges). The box itself renders as a semi-transparent bone (opacity 0.25, always static) with its children bones on top. Pass `static` to suppress animation on the box bone. Web uses `data-testid="__skl_box__"`, React Native uses `testID="__skl_box__"`.
+
+  **SkeletonIgnore**: wraps elements that should never receive a skeleton bone and always remain visible during loading - section headers, timestamps, decorative labels. The measurement layer skips the element and all its descendants entirely. Web uses `data-testid="__skl_ignore__"`, React Native uses `testID="__skl_ignore__"`.
+
+  Both components are exported from the main entry point (`react-zero-skeleton`) on web and the native entry point (`react-zero-skeleton/native`) on React Native.
+
 ## 0.9.0
 
 ### Minor Changes
