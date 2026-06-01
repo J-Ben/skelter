@@ -33,6 +33,10 @@ export const SkeletonBone = React.memo(function SkeletonBone({
 }: SkeletonBoneProps) {
   const [reduceMotion, setReduceMotion] = useState(false);
 
+  const dripAnim = useRef(new Animated.Value(0)).current;
+  const cascadeAnim = useRef(new Animated.Value(0)).current;
+  const cascadeWaveAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
@@ -80,30 +84,6 @@ export const SkeletonBone = React.memo(function SkeletonBone({
       outputRange: isRtl ? [amplitude, -amplitude] : [-amplitude, amplitude],
     });
   }, [effectiveAnimation, config.direction, config.cascade, bone.width, animatedValue, cascadeWaveAnim]);
-
-  /**
-   * Per-bone Animated.Value for drip. Driven independently from the shared
-   * animatedValue so each bone can have a phase offset based on bone.y,
-   * replicating the top→bottom cascade the web adapter achieves with animationDelay.
-   *
-   * Phase formula mirrors the web: phase = (0.5 - bone.y*msPerPx/duration) mod 1
-   *   bone.y=0   → phase=0.5 → highlight visible immediately at t=0
-   *   bone.y=H/2 → phase=0   → highlight visible after half a cycle
-   */
-  const dripAnim = useRef(new Animated.Value(0)).current;
-
-  /**
-   * Per-bone Animated.Value for cascade mode (pulse / slide / beat).
-   * Mirrors the shared animatedValue behavior but delayed by bone.y × cascade ms.
-   * Idle when config.cascade === 0 (shared animatedValue used instead).
-   */
-  const cascadeAnim = useRef(new Animated.Value(0)).current;
-
-  /**
-   * Per-bone Animated.Value for cascade mode (wave / shiver).
-   * Same 0→1 linear loop as the shared animatedValue but delayed by bone.y × cascade ms.
-   */
-  const cascadeWaveAnim = useRef(new Animated.Value(0)).current;
 
   const dripTranslateY = useMemo(() => {
     if (effectiveAnimation !== 'drip') return null;
