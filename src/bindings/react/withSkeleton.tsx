@@ -311,25 +311,9 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
       {showOverlay && (
         <div style={overlayStyle} aria-hidden="true" role="presentation">
-          {displayBones.map((bone, index) => {
-            if (mergedConfig.cascade > 0) {
-              const delay = Math.round(bone.y * mergedConfig.cascade);
-              return (
-                <div
-                  key={`bone-${index}`}
-                  style={{
-                    position: 'absolute',
-                    left: bone.x, top: bone.y,
-                    width: bone.width, height: bone.height,
-                    animationDelay: `${delay}ms`,
-                  }}
-                >
-                  <SkeletonBone bone={{ ...bone, x: 0, y: 0 }} config={mergedConfig} />
-                </div>
-              );
-            }
-            return <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />;
-          })}
+          {displayBones.map((bone, index) => (
+            <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
+          ))}
         </div>
       )}
     </div>
