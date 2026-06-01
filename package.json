@@ -1,7 +1,7 @@
 {
   "name": "react-zero-skeleton",
-  "version": "0.9.0",
-  "description": "Stop writing skeleton loaders. Auto-generated from your component layout.",
+  "version": "1.0.0",
+  "description": "The component IS the skeleton. Auto-measured at runtime, always in sync, zero maintenance. React & React Native.",
   "keywords": [
     "skeleton",
     "loader",

@@ -24,3 +24,7 @@ export type {
   StaticBone,
 } from './core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from './core/constants';
+export { SkeletonBox } from './adapters/web/SkeletonBox';
+export type { SkeletonBoxProps } from './adapters/web/SkeletonBox';
+export { SkeletonIgnore } from './adapters/web/SkeletonIgnore';
+export type { SkeletonIgnoreProps } from './adapters/web/SkeletonIgnore';
