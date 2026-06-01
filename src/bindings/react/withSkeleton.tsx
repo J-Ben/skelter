@@ -12,6 +12,17 @@ import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 
+// Injected once — fade-in keyframe used by cascade mode
+let _cascadeFadeInjected = false;
+function injectCascadeFade() {
+  if (_cascadeFadeInjected || typeof document === 'undefined') return;
+  _cascadeFadeInjected = true;
+  const el = document.createElement('style');
+  el.setAttribute('data-skelter', 'cascade-fade');
+  el.textContent = `@keyframes skelter-cascade-fade { from { opacity: 0; } to { opacity: 1; } }`;
+  document.head.appendChild(el);
+}
+
 type ExitPhase = 'visible' | 'exiting' | 'hidden';
 type EnterPhase = 'entering' | 'visible';
 
@@ -302,7 +313,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     <div style={{ position: 'relative', width: '100%' }}>
       <div
         ref={rootRef as React.RefObject<HTMLDivElement>}
-        style={hidden ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : undefined}
+        style={hidden ? { visibility: 'hidden', pointerEvents: 'none', position: 'relative', zIndex: 1 } : undefined}
         aria-hidden={hidden || undefined}
       >
         <Component {...(componentProps as P)} />
@@ -310,13 +321,27 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
       {showOverlay && (
         <div style={overlayStyle} aria-hidden="true" role="presentation">
-          {displayBones.map((bone, index) => (
-            <SkeletonBone
-              key={`bone-${index}`}
-              bone={bone}
-              config={mergedConfig}
-            />
-          ))}
+          {displayBones.map((bone, index) => {
+            if (mergedConfig.cascade > 0) {
+              injectCascadeFade();
+              const delay = Math.round(bone.y * mergedConfig.cascade);
+              return (
+                <div
+                  key={`bone-${index}`}
+                  style={{
+                    position: 'absolute',
+                    left: bone.x, top: bone.y,
+                    width: bone.width, height: bone.height,
+                    opacity: 0,
+                    animation: `skelter-cascade-fade 180ms ease-out ${delay}ms forwards`,
+                  }}
+                >
+                  <SkeletonBone bone={{ ...bone, x: 0, y: 0 }} config={mergedConfig} />
+                </div>
+              );
+            }
+            return <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />;
+          })}
         </div>
       )}
     </div>

@@ -56,6 +56,9 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
         height: rect.height,
         type: detectElementType(element),
         borderRadius: readBorderRadius(element),
+        isSkeletonBox: element.getAttribute('data-testid') === '__skl_box__' || element.getAttribute('data-testid') === '__skl_box_static__',
+        isSkeletonBoxStatic: element.getAttribute('data-testid') === '__skl_box_static__',
+        isSkeletonIgnore: element.getAttribute('data-testid') === '__skl_ignore__',
     };
 
     const children: BoneTree[] = [];

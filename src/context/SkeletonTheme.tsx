@@ -47,6 +47,12 @@ export interface SkeletonThemeProps {
    */
   revealOnExit?: boolean;
   /**
+   * Cascade stagger delay in ms per pixel of vertical position.
+   * When > 0, each bone's animation is delayed by bone.y × cascade ms.
+   * Default: 0 (all bones animate simultaneously).
+   */
+  cascade?: number;
+  /**
    * If true, automatically injects hasSkeleton={true} on all
    * child components : zero touch required on individual components.
    * Excluded components are listed in the exclude prop.
@@ -157,6 +163,7 @@ export function SkeletonTheme({
   enter,
   exit,
   revealOnExit,
+  cascade,
   auto = false,
   exclude = [],
   children,
@@ -181,6 +188,7 @@ export function SkeletonTheme({
       ...(enter !== undefined && { enter }),
       ...(exit !== undefined && { exit }),
       ...(revealOnExit !== undefined && { revealOnExit }),
+      ...(cascade !== undefined && { cascade }),
       ...(shatterConfig !== undefined && {
         shatterConfig: {
           ...DEFAULT_SKELETON_CONFIG.shatterConfig,
@@ -198,7 +206,7 @@ export function SkeletonTheme({
       parentContext.config,
       animation, color, highlightColor, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit,
+      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, cascade,
     ]
   );
 

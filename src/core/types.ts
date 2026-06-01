@@ -19,6 +19,10 @@ export interface Bone {
   borderRadius: number;
   /** The type of the original UI element */
   type: ElementType;
+  /** Opacity override (0–1). Used for container bones rendered behind their children. */
+  opacity?: number;
+  /** When true, the bone is rendered without animation (static placeholder). */
+  isStatic?: boolean;
 }
 
 /**
@@ -56,6 +60,7 @@ export type SkeletonAnimation =
   | 'shatter'  // Signature : grid fragmentation
   | 'slide'    // Bones float up and fade in/out
   | 'beat'     // Double heartbeat pulse : scale + opacity
+  | 'shaker'   // Rapid horizontal vibration burst followed by a rest
   | 'none';    // Static, no animation
 
 /**
@@ -145,6 +150,14 @@ export interface SkeletonConfig {
    * Set to 'none' to restore the v0.4 instant-removal behaviour.
    */
   exit?: SkeletonExit;
+  /**
+   * Cascade stagger delay in ms per pixel of vertical position.
+   * When > 0, each bone's animation is delayed by bone.y × cascade ms,
+   * creating a top-to-bottom sequential wave effect.
+   * Example: cascade={3} → a bone at y=100px starts 300ms after a bone at y=0.
+   * Default: 0 (all bones animate simultaneously).
+   */
+  cascade?: number;
   /** Shatter animation configuration */
   shatterConfig?: ShatterConfig;
   /** Image-specific configuration */
@@ -176,6 +189,12 @@ export interface MeasuredLayout {
   type: ElementType;
   /** Corner radius read from StyleSheet.flatten(style).borderRadius */
   borderRadius?: number;
+  /** True when the element is explicitly marked as a SkeletonBox */
+  isSkeletonBox?: boolean;
+  /** True when the SkeletonBox should not animate (static prop) */
+  isSkeletonBoxStatic?: boolean;
+  /** True when the element is marked SkeletonIgnore — skip measurement entirely */
+  isSkeletonIgnore?: boolean;
 }
 
 /**

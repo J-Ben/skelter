@@ -17,6 +17,41 @@ import { ShatterBone } from '../../adapters/native/ShatterBone';
 
 const isSSR = typeof window === 'undefined';
 
+// Wraps a bone in a fade-in Animated.View when cascade > 0.
+function CascadeBone({ bone, delay, children }: {
+  bone: Bone;
+  delay: number;
+  children: React.ReactNode;
+}) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.sequence([
+      Animated.delay(delay),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [delay, fadeAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: bone.x, top: bone.y,
+        width: bone.width, height: bone.height,
+        opacity: fadeAnim,
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 const _FallbackContext = createContext<unknown>(null);
 let _VirtualizedListContext: React.Context<unknown> = _FallbackContext;
 try {
@@ -220,6 +255,12 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       anim = Animated.loop(
         Animated.timing(animatedValue, { toValue: 1, duration: dur, useNativeDriver: true })
       );
+    } else if (animation === 'shaker') {
+      const dur = 1800 / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.timing(animatedValue, { toValue: 1, duration: dur, easing: Easing.linear, useNativeDriver: true })
+      );
     } else {
       const dur = (animation === 'shiver' ? 800 : 1500) / speed;
       animatedValue.setValue(0);
@@ -343,6 +384,12 @@ const StaticSkeletonRenderer = memo(function StaticSkeletonRenderer<P extends ob
           Animated.timing(animatedValue, { toValue: 0.3, duration: dur / 2, useNativeDriver: true }),
         ])
       );
+    } else if (animation === 'shaker') {
+      const dur = 1800 / speed;
+      animatedValue.setValue(0);
+      anim = Animated.loop(
+        Animated.timing(animatedValue, { toValue: 1, duration: dur, easing: Easing.linear, useNativeDriver: true })
+      );
     } else {
       const dur = (animation === 'shiver' ? 800 : 1500) / speed;
       animatedValue.setValue(0);
@@ -362,18 +409,27 @@ const StaticSkeletonRenderer = memo(function StaticSkeletonRenderer<P extends ob
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {bones.map((bone, index) =>
-            mergedConfig.animation === 'shatter' ? (
+          {bones.map((bone, index) => {
+            const inner = mergedConfig.animation === 'shatter' ? (
               <ShatterBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
             ) : (
               <SkeletonBone
                 key={`bone-${index}`}
-                bone={bone}
+                bone={mergedConfig.cascade > 0 ? { ...bone, x: 0, y: 0 } : bone}
                 config={mergedConfig}
                 animatedValue={animatedValue}
               />
-            )
-          )}
+            );
+            if (mergedConfig.cascade > 0) {
+              const delay = Math.round(bone.y * mergedConfig.cascade);
+              return (
+                <CascadeBone key={`bone-${index}`} bone={bone} delay={delay}>
+                  {inner}
+                </CascadeBone>
+              );
+            }
+            return inner;
+          })}
         </View>
       )}
 
