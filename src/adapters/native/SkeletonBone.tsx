@@ -153,7 +153,8 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     const useCascade = config.cascade > 0 && (
       effectiveAnimation === 'pulse' ||
       effectiveAnimation === 'slide' ||
-      effectiveAnimation === 'beat'
+      effectiveAnimation === 'beat' ||
+      effectiveAnimation === 'shaker'
     );
     if (!useCascade) return;
 
@@ -170,6 +171,15 @@ export const SkeletonBone = React.memo(function SkeletonBone({
           Animated.timing(cascadeAnim, { toValue: 1.0, duration: dur / 2, useNativeDriver: true }),
           Animated.timing(cascadeAnim, { toValue: 0.3, duration: dur / 2, useNativeDriver: true }),
         ])),
+      ]);
+    } else if (effectiveAnimation === 'shaker') {
+      const dur = 1800 / speed;
+      cascadeAnim.setValue(0);
+      anim = Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(
+          Animated.timing(cascadeAnim, { toValue: 1, duration: dur, easing: Easing.linear, useNativeDriver: true })
+        ),
       ]);
     } else if (effectiveAnimation === 'slide') {
       const dur = 1200 / speed;
@@ -202,9 +212,10 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   const isDrip = effectiveAnimation === 'drip';
   const isSlide = effectiveAnimation === 'slide';
   const isBeat = effectiveAnimation === 'beat';
+  const isShaker = effectiveAnimation === 'shaker';
 
   // When cascade > 0, use per-bone cascadeAnim instead of shared animatedValue.
-  const useCascadeAnim = config.cascade > 0 && (isPulse || isSlide || isBeat);
+  const useCascadeAnim = config.cascade > 0 && (isPulse || isSlide || isBeat || isShaker);
   const activeValue = useCascadeAnim ? cascadeAnim : animatedValue;
 
   const slideOpacity = useMemo(
@@ -233,12 +244,24 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     [isBeat, activeValue]
   );
 
+  // Shaker: interpolate 0→1 linear value into a shake burst + rest pattern
+  const shakerTranslateX = useMemo(
+    () => isShaker ? activeValue.interpolate({
+      inputRange: [0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18, 0.21, 0.24, 1],
+      outputRange: [0, -6, 6, -5, 5, -3, 3, -1, 0, 0],
+      extrapolate: 'clamp',
+    }) : null,
+    [isShaker, activeValue]
+  );
+
   const outerAnimatedStyle = isPulse
     ? { opacity: activeValue as unknown as number }
     : isSlide && slideOpacity && slideTranslateY
     ? { opacity: slideOpacity as unknown as number, transform: [{ translateY: slideTranslateY as unknown as number }] }
     : isBeat && beatScale && beatOpacity
     ? { opacity: beatOpacity as unknown as number, transform: [{ scale: beatScale as unknown as number }] }
+    : isShaker && shakerTranslateX
+    ? { transform: [{ translateX: shakerTranslateX as unknown as number }] }
     : {};
 
   return (
@@ -255,6 +278,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
           borderRadius: bone.borderRadius || config.borderRadius,
           backgroundColor: config.color,
           overflow: 'hidden',
+          ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
         },
         outerAnimatedStyle,
       ]}

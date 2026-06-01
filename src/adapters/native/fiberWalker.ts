@@ -130,6 +130,8 @@ interface CollectedNode {
   nativeTag: number;       // Fallback for UIManager path
   type: ElementType;
   borderRadius?: number;
+  isSkeletonBox?: boolean;
+  isSkeletonBoxStatic?: boolean;
 }
 
 /**
@@ -166,8 +168,15 @@ function walkFiber(
     // Content/interactive components are always bones.
     // Container Views are bones only when they have no host descendants
     // (i.e. they are bare visual blocks, not layout wrappers).
+    const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
+    // SkeletonIgnore: skip this node and all its descendants
+    if (props.testID === '__skl_ignore__') {
+      if (fiber.sibling) walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
+      return;
+    }
+    const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
     const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
-    const shouldCollect = isContent || !hasAnyHostDescendant(fiber, excludeSet);
+    const shouldCollect = isContent || isSkeletonBox || !hasAnyHostDescendant(fiber, excludeSet);
 
     if (shouldCollect) {
       const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
@@ -185,7 +194,6 @@ function walkFiber(
         }
       }
 
-      const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
       const flatStyle = props.style
         ? StyleSheet.flatten(props.style as Parameters<typeof StyleSheet.flatten>[0])
         : {};
@@ -199,6 +207,8 @@ function walkFiber(
           nativeTag,
           type: getElementType(typeName),
           borderRadius,
+          isSkeletonBox: isSkeletonBox || undefined,
+          isSkeletonBoxStatic: props.testID === '__skl_box_static__' || undefined,
         });
       }
     }
@@ -326,6 +336,8 @@ export function measureFiberLeaves(
             height,
             type: node.type,
             borderRadius: node.borderRadius,
+            isSkeletonBox: node.isSkeletonBox,
+            isSkeletonBoxStatic: node.isSkeletonBoxStatic,
           });
         }
         remaining--;

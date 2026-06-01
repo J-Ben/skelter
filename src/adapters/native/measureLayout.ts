@@ -134,6 +134,45 @@ function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
   };
 }
 
+// ─── SkeletonBox nesting ──────────────────────────────────────────────────────
+
+/**
+ * Builds a nested BoneTree from a flat list of MeasuredLayouts.
+ * SkeletonBox nodes become parents of any layout whose bounds fall
+ * entirely within theirs (geometric containment). All other layouts
+ * stay as root-level children.
+ */
+function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
+  const boxes = layouts.filter(l => l.isSkeletonBox);
+  const leaves = layouts.filter(l => !l.isSkeletonBox);
+
+  if (boxes.length === 0) {
+    return leaves.map(l => ({ layout: l, children: [] }));
+  }
+
+  const boxChildren = new Map<MeasuredLayout, BoneTree[]>(boxes.map(b => [b, []]));
+  const rootChildren: BoneTree[] = [];
+
+  for (const l of leaves) {
+    const parent = boxes.find(
+      b => l.x >= b.x && l.y >= b.y &&
+           l.x + l.width <= b.x + b.width &&
+           l.y + l.height <= b.y + b.height
+    );
+    if (parent) {
+      boxChildren.get(parent)!.push({ layout: l, children: [] });
+    } else {
+      rootChildren.push({ layout: l, children: [] });
+    }
+  }
+
+  for (const b of boxes) {
+    rootChildren.push({ layout: b, children: boxChildren.get(b)! });
+  }
+
+  return rootChildren;
+}
+
 // ─── auto (v0.3 default) ──────────────────────────────────────────────────────
 
 interface AutoMeasureOptions {
@@ -197,10 +236,9 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
                 children: [],
               };
             } else {
-              // One BoneTree child per leaf element, no nesting needed
               boneTreeRef.current = {
                 layout: { x: 0, y: 0, width, height, type: 'view' },
-                children: layouts.map(l => ({ layout: l, children: [] })),
+                children: nestLayouts(layouts),
               };
             }
             setIsLayoutCaptured(true);

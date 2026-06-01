@@ -7,6 +7,7 @@ import { createShatterStyles } from './animations/shatter';
 import { createSlideAnimation } from './animations/slide';
 import { createBeatAnimation } from './animations/beat';
 import { createDripAnimation } from './animations/drip';
+import { createShakerAnimation } from './animations/shaker';
 
 /**
  * Props for web SkeletonBone.
@@ -54,7 +55,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const effectiveAnimation = reduceMotion ? 'none' : config.animation;
+  const effectiveAnimation = (reduceMotion || bone.isStatic) ? 'none' : config.animation;
 
   const baseStyle: CSSProperties = {
     position: 'absolute',
@@ -65,6 +66,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     borderRadius: bone.borderRadius || config.borderRadius,
     backgroundColor: config.color,
     overflow: 'hidden',
+    ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
   };
 
   const shatterSquares = useMemo(
@@ -177,6 +179,17 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   // Beat : double heartbeat — scale + opacity pulse
   if (effectiveAnimation === 'beat') {
     const { style } = createBeatAnimation(config);
+    return (
+      <div
+        aria-hidden="true"
+        style={{ ...baseStyle, ...style, ...(cascadeDelay && { animationDelay: cascadeDelay }) }}
+      />
+    );
+  }
+
+  // Shaker : rapid horizontal vibration burst, then rest
+  if (effectiveAnimation === 'shaker') {
+    const { style } = createShakerAnimation(config);
     return (
       <div
         aria-hidden="true"

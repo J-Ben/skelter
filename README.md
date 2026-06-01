@@ -1,72 +1,39 @@
 # react-zero-skeleton
 
-**Stop writing skeleton loaders.**
-
 [![npm version](https://img.shields.io/npm/v/react-zero-skeleton)](https://www.npmjs.com/package/react-zero-skeleton)
 [![npm downloads](https://img.shields.io/npm/dm/react-zero-skeleton)](https://www.npmjs.com/package/react-zero-skeleton)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/react-zero-skeleton)](https://bundlephobia.com/package/react-zero-skeleton)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
+[![React Native](https://img.shields.io/badge/React%20Native-%E2%9C%93-green)](https://reactnative.dev)
+[![React](https://img.shields.io/badge/React%20web-%E2%9C%93-61dafb)](https://react.dev)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-**[→ Live demo & docs](https://skelter.dev)**
-
-Wrap your component. Pass two props. react-zero-skeleton measures the real layout and generates one bone per element : automatically, always in sync. Works with **React Native** and **React (web)**.
+**[→ Live demo](https://skelter.dev/demo) · [Docs](https://skelter.dev/docs)**
 
 ---
 
-## The Problem
+The skeleton loader is the first contact between your app and your user. That moment deserves care, not an afterthought maintained in a separate file that drifts from reality the moment you touch the real component.
 
-Every skeleton library makes you write the component twice:
+react-zero-skeleton changes the relationship. **The component IS its skeleton.** Wrap it once. The library measures the real layout at runtime, generates one bone per element, and keeps everything in sync automatically. Forever.
 
 ```tsx
-// 1. Your real component
-function ArticleCard({ article }) {
+// Before: two things to write, two things to maintain, two things to break.
+function ArticleCard({ article }) { /* real component */ }
+const ArticleCardSkeleton = () => ( /* a copy you'll forget to update */ )
+
+// After: one thing.
+const ArticleCard = withSkeleton(function ArticleCard({ article }) {
   return (
     <View>
       <Image source={{ uri: article.cover }} style={{ height: 160 }} />
-      <Text style={{ fontSize: 16 }}>{article.title}</Text>
-      <Text style={{ color: '#888' }}>{article.excerpt}</Text>
+      <Text style={s.title}>{article.title}</Text>
+      <Text style={s.excerpt}>{article.excerpt}</Text>
     </View>
   )
-}
+})
 
-// 2. A skeleton copy you maintain forever
-const ArticleCardSkeleton = () => (
-  <SkeletonPlaceholder>
-    <View style={{ height: 160 }} />
-    <View style={{ width: '80%', height: 18 }} />
-    <View style={{ width: '60%', height: 14 }} />
-  </SkeletonPlaceholder>
-)
-
-// Design changes → you update one, forget the other → they drift apart.
-```
-
----
-
-## The Solution
-
-```tsx
-import { withSkeleton } from 'react-zero-skeleton'
-
-// Write your component once : no skeleton needed
-function ArticleCard({ article }) {
-  return (
-    <View>
-      <Image source={{ uri: article.cover }} style={{ height: 160 }} />
-      <Text style={{ fontSize: 16 }}>{article.title}</Text>
-      <Text style={{ color: '#888' }}>{article.excerpt}</Text>
-    </View>
-  )
-}
-
-export default withSkeleton(ArticleCard)
-
-// Two props wherever you use it
 <ArticleCard hasSkeleton isLoading={isLoading} article={data} />
 ```
-
-react-zero-skeleton renders your component invisibly, measures every element, and generates a matching bone for each one. Layout changes automatically.
 
 ---
 
@@ -74,126 +41,123 @@ react-zero-skeleton renders your component invisibly, measures every element, an
 
 ```bash
 npm install react-zero-skeleton
-# or
-yarn add react-zero-skeleton
 ```
 
 No native code. No `pod install`. No linking.
 
-The bundler picks the right version automatically:
-- **React Native / Metro** → native build (Fiber + `onLayout` + Animated)
-- **React / Web (Next.js, Vite…)** → web build (DOM + ResizeObserver + CSS animations)
+The bundler resolves the right build automatically:
+- **React Native / Metro** → native build (Fiber walk · `onLayout` · `Animated`)
+- **React web / Next.js / Vite** → web build (DOM · `ResizeObserver` · CSS animations)
 
 ---
 
-## Quick Start
+## How it works
 
-### 1 : Wrap your component
+On the first render, the component renders invisibly. react-zero-skeleton walks the React Fiber tree (on native) or the DOM (on web), measures every View / Image / Text, and captures position, size, and corner radius. The overlay - one bone per element, positioned exactly - replaces the hidden content until `isLoading` becomes false.
+
+Layout changes propagate automatically. If you add a field to the card, the skeleton gains a bone. No manual sync required.
+
+---
+
+## Quick start
+
+### Wrap once
 
 ```tsx
-// ArticleCard.tsx
 import { withSkeleton } from 'react-zero-skeleton'
 
-function ArticleCard({ article }) {
+function ProfileCard({ user }) {
   return (
-    <View>
-      <Image source={{ uri: article.cover }} style={{ height: 160 }} />
-      <Text style={{ fontSize: 16 }}>{article.title}</Text>
-      <Text style={{ color: '#888' }}>{article.excerpt}</Text>
+    <View style={s.wrap}>
+      <Image source={{ uri: user.avatar }} style={s.avatar} />
+      <Text style={s.name}>{user.name}</Text>
+      <Text style={s.bio}>{user.bio}</Text>
     </View>
   )
 }
 
-export default withSkeleton(ArticleCard)
+export default withSkeleton(ProfileCard)
 ```
 
-### 2 : Use it
+### Use it
 
 ```tsx
 // Two props. That's it.
-<ArticleCard hasSkeleton isLoading={isLoading} article={data} />
+<ProfileCard hasSkeleton isLoading={isLoading} user={data} />
 
-// Shorthand : activates hasSkeleton AND isLoading at once
-<ArticleCard isLoadingSkeleton article={data} />
+// Shorthand: activates hasSkeleton + isLoading at once
+<ProfileCard isLoadingSkeleton user={data} />
 ```
 
-### 3 : (Optional) Global theme
+### Global theme
 
 ```tsx
 import { SkeletonTheme } from 'react-zero-skeleton'
 
-export default function App() {
-  return (
-    <SkeletonTheme animation="wave" color="#E0E0E0">
-      <YourApp />
-    </SkeletonTheme>
-  )
-}
+<SkeletonTheme animation="wave" color="#E0E0E0" highlightColor="#F5F5F5">
+  <App />
+</SkeletonTheme>
 ```
+
+Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
 
 ---
 
 ## Animations
 
-| Animation | Description |
-| --------- | ----------- |
-| `pulse` | Soft opacity fade. The default. |
-| `wave` | Shimmer that slides left to right. |
-| `shiver` | Intense wave : wider amplitude, faster speed. |
-| `shatter` | Grid fragmentation : squares fade in/out with stagger. |
-| `none` | Static placeholder. Useful for reduced-motion. |
+Nine animations. Each has a reason to exist.
+
+| Animation | Character |
+|-----------|-----------|
+| `pulse` | Soft opacity fade. The default. Works everywhere, no dependencies. |
+| `wave` | Shimmer left to right. Classic and readable. |
+| `shiver` | Wider, more energetic wave. Good for large image placeholders. |
+| `drip` | Vertical shimmer sweeping top to bottom, each bone phase-shifted. |
+| `slide` | Bones drift upward while fading in. A gentle breathing effect. |
+| `beat` | Double heartbeat: scale + opacity. Ideal for health and real-time data UIs. |
+| `shaker` | A rapid horizontal tremor burst, then silence. For alert-style states. |
+| `shatter` | Each bone fragments into a grid of squares. The signature animation. |
+| `none` | Static placeholder. Useful with `prefers-reduced-motion`. |
 
 ```tsx
-// Global via SkeletonTheme
-<SkeletonTheme animation="wave">
-  <App />
-</SkeletonTheme>
+// Global
+<SkeletonTheme animation="shatter">…</SkeletonTheme>
 
 // Per component
-<ArticleCard
-  hasSkeleton
-  isLoading={isLoading}
-  skeletonConfig={{ animation: 'shatter' }}
-/>
+<ProfileCard hasSkeleton isLoading={isLoading} skeletonConfig={{ animation: 'beat' }} />
 
-// Speed control
+// Speed
 skeletonConfig={{ animation: 'wave', speed: 'slow' }}   // 0.5×
 skeletonConfig={{ animation: 'wave', speed: 'rapid' }}  // 2×
 skeletonConfig={{ animation: 'wave', speed: 1.5 }}      // custom multiplier
 ```
 
-### wave / shiver on React Native
+> `wave` and `shiver` require a LinearGradient peer on **React Native**:
+> `npx expo install expo-linear-gradient` or `npm install react-native-linear-gradient`.
+> On web, CSS gradients are used: no peer needed.
 
-`wave` and `shiver` require a LinearGradient peer on React Native. Install one:
+### Cascade
 
-```sh
-# Expo
-npx expo install expo-linear-gradient
-
-# Bare React Native
-npm install react-native-linear-gradient
-```
-
-Both are detected automatically. No extra config needed.
-
-> On **React (web)**, `wave` and `shiver` use CSS gradients : no peer dependency required.
-
----
-
-## Shatter
-
-Each bone is subdivided into a grid of squares that fade in/out with staggered delays.
+When `cascade > 0`, each bone's animation starts delayed by `bone.y × cascade` ms, creating a top-to-bottom sequential wave through the component.
 
 ```tsx
-<ArticleCard
+<SkeletonTheme animation="pulse" cascade={3}>
+  {/* bone at y=0 starts immediately, bone at y=100 starts 300ms later */}
+</SkeletonTheme>
+```
+
+### Shatter
+
+```tsx
+<ProfileCard
   hasSkeleton
   isLoading={isLoading}
   skeletonConfig={{
     animation: 'shatter',
     shatterConfig: {
-      gridSize: 6,        // columns in the grid
-      stagger: 80,        // ms delay between squares
-      fadeStyle: 'radial' // 'random' | 'cascade' | 'radial'
+      cellSize: 24,        // px - overrides column count
+      stagger: 80,         // ms delay between squares
+      fadeStyle: 'radial'  // 'random' | 'cascade' | 'radial'
     }
   }}
 />
@@ -201,58 +165,118 @@ Each bone is subdivided into a grid of squares that fade in/out with staggered d
 
 ---
 
+## Loading experience
+
+The transition into and out of the skeleton is part of the experience. react-zero-skeleton gives you control over both.
+
+### Enter animation
+
+Played when the skeleton first appears.
+
+```tsx
+<SkeletonTheme enter="fadeUp">…</SkeletonTheme>
+// 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'none'
+```
+
+### Exit animation
+
+Played when the skeleton disappears and content takes over.
+
+```tsx
+<SkeletonTheme animation="shatter" exit="fadeUp" revealOnExit>…</SkeletonTheme>
+```
+
+`revealOnExit` keeps the real content visible underneath while the skeleton fades out, creating a reveal effect instead of an abrupt swap.
+
+---
+
+## SkeletonBox
+
+By default, container divs are skipped: only their text and image children receive bones. When a container is itself a visually meaningful shape (a stat card, a chip, a badge), wrap it with `SkeletonBox` to emit the box as a semi-transparent bone with its children rendered on top.
+
+```tsx
+import { SkeletonBox } from 'react-zero-skeleton'
+
+function Stat({ label, value }) {
+  return (
+    <SkeletonBox style={{ flex: 1, backgroundColor: '#eee', borderRadius: 10, padding: 12 }}>
+      <Text style={{ width: 'fit-content' }}>{label}</Text>
+      <Text style={{ fontWeight: '700', width: 'fit-content' }}>{value}</Text>
+    </SkeletonBox>
+  )
+}
+```
+
+The box bone is always static (no animation). Children animate normally.
+
+---
+
+## SkeletonIgnore
+
+Wraps elements that should never receive a skeleton bone and always remain visible during loading: section headers, timestamps, decorative labels.
+
+```tsx
+import { SkeletonIgnore } from 'react-zero-skeleton'
+
+function PriceCard({ data }) {
+  return (
+    <View style={s.wrap}>
+      <SkeletonIgnore>
+        <Text style={s.label}>Live price</Text>
+      </SkeletonIgnore>
+      <Text style={s.value}>{data.price}</Text>
+      <Text style={s.change}>{data.change}</Text>
+    </View>
+  )
+}
+```
+
+The measurement layer skips `SkeletonIgnore` entirely. The text stays visible while the dynamic content animates around it.
+
+---
+
 ## API Reference
 
-### Props injected by `withSkeleton`
+### Props added by `withSkeleton`
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `hasSkeleton` | `boolean` | Activates skeleton on this component |
-| `isLoading` | `boolean` | Shows the skeleton when true |
-| `isLoadingSkeleton` | `boolean` | Shorthand : activates `hasSkeleton` + `isLoading` |
-| `skeletonConfig` | `SkeletonConfig` | Local config override (highest priority) |
-
-Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
-
----
+| `hasSkeleton` | `boolean` | Activates skeleton mode on this instance |
+| `isLoading` | `boolean` | Shows the skeleton when `true` |
+| `isLoadingSkeleton` | `boolean` | Shorthand: activates `hasSkeleton + isLoading` |
+| `skeletonConfig` | `SkeletonConfig` | Per-instance config override |
 
 ### `SkeletonConfig`
 
 | Prop | Type | Default | Description |
-| ---- | ---- | ------- | ----------- |
-| `animation` | `'pulse' \| 'wave' \| 'shiver' \| 'shatter' \| 'none'` | `'pulse'` | Animation mode |
+|------|------|---------|-------------|
+| `animation` | `'pulse' \| 'wave' \| 'shiver' \| 'drip' \| 'slide' \| 'beat' \| 'shaker' \| 'shatter' \| 'none'` | `'pulse'` | Animation style |
 | `color` | `string` | `'#E0E0E0'` | Base bone color |
-| `highlightColor` | `string` | `'#F5F5F5'` | Highlight color for wave / shiver |
-| `speed` | `'slow' \| 'normal' \| 'rapid' \| number` | `'normal'` | Animation speed |
+| `highlightColor` | `string` | `'#F5F5F5'` | Highlight for wave / shiver / drip |
+| `speed` | `'slow' \| 'normal' \| 'rapid' \| number` | `'normal'` | Animation speed multiplier |
 | `borderRadius` | `number` | `4` | Fallback corner radius |
 | `direction` | `'ltr' \| 'rtl'` | `'ltr'` | Shimmer direction |
+| `cascade` | `number` | `0` | Stagger ms per pixel of vertical position |
+| `enter` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'none'` | Skeleton enter animation |
+| `exit` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'fade'` | Skeleton exit animation |
+| `revealOnExit` | `boolean` | `false` | Show real content under skeleton during exit |
 | `minDuration` | `number` | `0` | Minimum ms the skeleton stays visible |
-| `disabled` | `boolean` | `false` | Never show skeleton if true |
-| `maxBonesInList` | `number` | `0` | Max bones rendered in FlatList (0 = unlimited) |
-| `shatterConfig` | `ShatterConfig` | see below | Shatter animation config |
-| `imageConfig` | `{ aspectRatio: number }` | `{ aspectRatio: 1 }` | Image fallback dimensions |
+| `disabled` | `boolean` | `false` | Disables skeleton entirely |
+| `shatterConfig` | `ShatterConfig` | - | Shatter animation config |
+| `maxBonesInList` | `number` | `0` | Max bones in FlatList (0 = unlimited) |
 
-Since v0.3, `borderRadius` is read from each element's `StyleSheet` style automatically. `config.borderRadius` acts as the fallback when the element has no explicit radius.
-
-### `withSkeleton` options
-
-Second argument : `withSkeleton(Component, options?)`:
+### `withSkeleton(Component, options?)`
 
 | Option | Type | Default | Description |
-| ------ | ---- | ------- | ----------- |
-| `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `'auto'` walks the Fiber tree (one bone per element); `'root-only'` restores v0.2 single-block behaviour |
-| `maxDepth` | `number` | `8` | Max depth of the Fiber tree traversal |
-| `exclude` | `string[]` | `[]` | Component displayNames excluded from the fiber walk (produce no bones) |
-| `mockProps` | `Record<string, unknown>` | `{}` | Props used for the invisible warmup render on cold start : see below |
+|--------|------|---------|-------------|
+| `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `auto` = one bone per element; `root-only` = single block |
+| `maxDepth` | `number` | `8` | Max Fiber tree depth |
+| `exclude` | `string[]` | `[]` | Component displayNames to skip |
+| `mockProps` | `object` | `{}` | Props for the invisible warmup render |
 
-```tsx
-export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
-export default withSkeleton(Screen, { measureStrategy: 'root-only' })
-```
+#### `mockProps`: cold start
 
-#### `mockProps` : cold start
-
-On first load, real props often carry no data (`article: null`) so the component renders nothing and no layout can be measured. `mockProps` provides fake data for the invisible warmup render so the fiber walker always has a realistic layout to measure:
+When real props carry no data on first load, `mockProps` provides a realistic layout for the warmup render:
 
 ```tsx
 withSkeleton(ArticleCard, {
@@ -260,160 +284,97 @@ withSkeleton(ArticleCard, {
 })
 ```
 
-The mock data is merged on top of the real props (`{ ...componentProps, ...mockProps }`) and used **only** while `isLayoutCaptured` is false. Once the real layout is captured it is never used again.
-
-For FlatList, combine with placeholder items on the list side:
-
-```tsx
-const data = isLoading ? Array(5).fill(null) : realData
-
-<FlatList
-  data={data}
-  renderItem={({ item }) => (
-    <ArticleCard article={item} hasSkeleton isLoading={item === null} />
-  )}
-/>
-```
-
-### `registerSkeletonLeaf`
-
-Registers additional component names as skeleton leaf elements. Use this for custom image libraries that are not detected automatically.
-
-```tsx
-import { registerSkeletonLeaf } from 'skelter'
-registerSkeletonLeaf('FastImage', 'ExpoImage')
-```
-
 ### `ShatterConfig`
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `gridSize` | `number` | `6` | Number of columns |
-| `stagger` | `number` | `80` | Delay in ms between each square |
+| `cellSize` | `number` | `0` (auto) | Fixed cell size in px - overrides column count |
+| `stagger` | `number` | `80` | ms delay between squares |
 | `fadeStyle` | `'random' \| 'cascade' \| 'radial'` | `'random'` | Square fade order |
 
-### `SkeletonTheme` props
+### `registerSkeletonLeaf` (React Native)
 
-All `SkeletonConfig` props, plus:
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `children` | `ReactNode` | : | Your app |
-
----
-
-### React Native : additional options
-
-The following are available in the React Native build only.
-
-#### `withSkeleton(Component, options?)`
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `'auto'` = one bone per element (Fiber walk); `'root-only'` = single root block |
-| `maxDepth` | `number` | `8` | Max depth of the Fiber tree traversal |
-| `exclude` | `string[]` | `[]` | Component displayNames to skip during Fiber walk |
-
-```tsx
-// Opt out of Fiber walk for a heavy screen
-export default withSkeleton(Screen, { measureStrategy: 'root-only' })
-
-// Exclude a third-party widget
-export default withSkeleton(Screen, { exclude: ['MapView', 'VideoPlayer'] })
-```
-
-#### `registerSkeletonLeaf`
-
-Register custom image libraries as leaf elements in the Fiber walk.
+Registers custom image components as leaf elements in the Fiber walk:
 
 ```tsx
 import { registerSkeletonLeaf } from 'react-zero-skeleton'
-
-// Call once before your first render
 registerSkeletonLeaf('FastImage', 'ExpoImage')
 ```
 
-#### `SkeletonTheme` : `auto` mode (React Native only)
+### `SkeletonTheme` auto mode (React Native)
 
-Injects `hasSkeleton` on all children automatically via `React.cloneElement`.
+Injects `hasSkeleton` on all children via `cloneElement`. Then anywhere in the tree, only `isLoading` is needed:
 
 ```tsx
-<SkeletonTheme
-  animation="wave"
-  auto
-  exclude={['MapView', 'NavigationContainer']}
->
+<SkeletonTheme auto animation="wave" exclude={['MapView']}>
   <App />
 </SkeletonTheme>
-```
 
-Then anywhere in the tree, just pass `isLoading`:
-
-```tsx
+// Anywhere in the tree:
 <ArticleCard isLoading={isLoading} />
 ```
 
-> Use `exclude` to protect third-party components that reject unknown props.
+---
+
+## FlatList
+
+```tsx
+const items = isLoading ? Array(6).fill(null) : realData
+
+<FlatList
+  data={items}
+  renderItem={({ item }) => (
+    <ArticleCard
+      article={item}
+      hasSkeleton
+      isLoading={item === null}
+    />
+  )}
+/>
+```
+
+`shatter` falls back to `pulse` automatically inside `FlatList` / `FlashList` for performance. `maxBonesInList` caps the number of bones per cell when lists are long.
 
 ---
 
-## Limitations
+## Accurate bones: `fit-content`
 
-### React Native : Fiber walk reads React internals
+Block-level elements expand to fill their container by default, so their bone fills the full width even if the text is short. Add `width: 'fit-content'` (web) or `alignSelf: 'flex-start'` (React Native) to make each bone match the actual content width.
 
-Per-element measurement reads `_reactInternals` / `_reactFiber` from native View instances. These are undocumented React internals, stable across React 17-18. If the walk fails, react-zero-skeleton falls back to a single root bone automatically.
+```tsx
+// Web
+<p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
 
-### React Native : wave / shiver need a gradient peer
-
-Without `expo-linear-gradient` or `react-native-linear-gradient`, these animations fall back to a solid placeholder. See [wave / shiver on React Native](#wave--shiver-on-react-native).
-
-### React Native : shatter falls back to pulse in FlatList
-
-Inside `FlatList` / `FlashList`, `shatter` automatically falls back to `pulse` for performance. This is silent and intentional.
-
-### React Native : animations run on the JS thread
-
-All RN animations use the `Animated` API. On low-end devices with long lists, you may see frame drops. Reanimated worklets are on the roadmap.
+// React Native
+<Text style={{ fontSize: 16, alignSelf: 'flex-start' }}>{title}</Text>
+```
 
 ---
 
 ## Comparison
 
 | Feature | **react-zero-skeleton** | react-native-auto-skeleton | react-content-loader | react-loading-skeleton |
-|---------|:-----------------------:|:--------------------------:|:--------------------:|:----------------------:|
+|---------|:-:|:-:|:-:|:-:|
 | Zero config | ✅ | ✅ | ❌ | ❌ |
-| Auto-generated from layout | ✅ | ✅ | ❌ | ❌ |
+| Auto-generated from live layout | ✅ | ✅ | ❌ | ❌ |
 | React web support | ✅ | ❌ | ✅ | ✅ |
+| Enter / exit transitions | ✅ | ❌ | ❌ | ❌ |
+| Cascade stagger | ✅ | ❌ | ❌ | ❌ |
 | Shatter animation | ✅ | ❌ | ❌ | ❌ |
+| SkeletonBox / SkeletonIgnore | ✅ | ❌ | ❌ | ❌ |
 | No native code | ✅ | ❌ | ✅ | ✅ |
 | RTL support | ✅ | ❌ | ❌ | ✅ |
-| Cache aware | ✅ | ❌ | ❌ | ❌ |
-
-¹ One bone per element by default (v0.3+). `measureStrategy: 'root-only'` falls back to one block per component root.
-² Via `cloneElement` injection : may generate warnings on some third-party components.
 
 ---
 
-## Roadmap
+## Limitations
 
-### v0.3 : Current
+**Fiber walk reads React internals**: per-element measurement accesses `_reactInternals` / `_reactFiber`, which are undocumented but stable across React 17-18-19. If the walk fails, react-zero-skeleton falls back to a single root bone silently.
 
-- ✅ Per-element bones : one bone per View / Image / Text, auto-measured from Fiber tree
-- ✅ Per-element `borderRadius` : read from each element's StyleSheet
-- ✅ `withSkeleton(Component, options?)` : `measureStrategy`, `maxDepth`, `exclude`, `mockProps`
-- ✅ `mockProps` : cold start solver, warmup renders with fake data before real data arrives
-- ✅ `registerSkeletonLeaf` : add custom image components to the leaf registry
-- ✅ FlatList auto-detection : switches to root-only inside VirtualizedList
-- ✅ `pulse`, `wave`, `shiver`, `shatter` animations, `AnimationSpeed` presets
-- ✅ FlatList optimization, SSR safe, cache aware, RTL, accessibility (reduce motion)
+**wave / shiver require a gradient peer on React Native**: without `expo-linear-gradient` or `react-native-linear-gradient`, they fall back to a solid placeholder.
 
-### v1 : Future
+**Animations run on the JS thread**: all React Native animations use the `Animated` API. Reanimated worklets are on the roadmap for long lists on low-end devices.
 
-- Opt-in Suspense API : `<SkeletonSuspense fallback={<SkeletonOf component={X} />}>`
-- Dark mode auto via `useColorScheme`
-- Static codegen for FlashList items
-
----
 ---
 
 ## Contributing
@@ -422,10 +383,9 @@ All RN animations use the `Animated` API. On low-end devices with long lists, yo
 npm install
 npm run build
 npm test
-npm run typecheck
 ```
 
-Open a PR against `main`. Please include a changeset:
+Open a PR against `main` with a changeset:
 
 ```bash
 npx changeset
