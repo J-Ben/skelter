@@ -11,6 +11,8 @@
 
 import { StyleSheet, UIManager } from 'react-native';
 import type { MeasuredLayout, ElementType } from '../../core/types';
+import { parseParagraph, normalizeTextAlign } from '../../core/constants';
+import type { ParagraphAlign } from '../../core/types';
 
 // ─── Leaf registry ───────────────────────────────────────────────────────────
 
@@ -132,6 +134,9 @@ interface CollectedNode {
   borderRadius?: number;
   isSkeletonBox?: boolean;
   isSkeletonBoxStatic?: boolean;
+  paragraphLines?: number;
+  paragraphAlign?: ParagraphAlign;
+  paragraphWords?: boolean;
 }
 
 /**
@@ -163,6 +168,9 @@ function walkFiber(
   // fiber.tag === 5 is HostComponent in both Old and New Architecture.
   // Fabric RN 0.71+ uses a viewConfig object as fiber.type instead of a string.
   const isHostFiber = (fiber.tag as number) === 5 || typeof fiberType === 'string';
+  // When this node is a SkeletonParagraph wrapper, we collect it as a single
+  // text block and skip its children so the inner Text doesn't add a bone too.
+  let skipChildren = false;
   if (isHostFiber && isKnownHost(typeName)) {
     // Decide whether to emit a bone for this node.
     // Content/interactive components are always bones.
@@ -175,8 +183,12 @@ function walkFiber(
       return;
     }
     const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
+    const paragraph = parseParagraph(props.testID as string | undefined);
+    const paragraphLines = paragraph?.lines;
     const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
-    const shouldCollect = isContent || isSkeletonBox || !hasAnyHostDescendant(fiber, excludeSet);
+    const shouldCollect = isContent || isSkeletonBox || paragraphLines !== undefined || !hasAnyHostDescendant(fiber, excludeSet);
+    // Paragraph wrapper: collected as one block, children skipped below.
+    skipChildren = paragraphLines !== undefined;
 
     if (shouldCollect) {
       const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
@@ -201,21 +213,30 @@ function walkFiber(
         | number
         | undefined;
 
+      // Explicit align wins; otherwise inherit textAlign from the wrapper style.
+      const paragraphAlign = paragraphLines !== undefined
+        ? paragraph?.align ?? normalizeTextAlign((flatStyle as Record<string, unknown>).textAlign as string | undefined)
+        : undefined;
+
       if (stateNode || nativeTag > 0) {
         out.push({
           stateNode,
           nativeTag,
-          type: getElementType(typeName),
+          type: paragraphLines !== undefined ? 'text' : getElementType(typeName),
           borderRadius,
           isSkeletonBox: isSkeletonBox || undefined,
           isSkeletonBoxStatic: props.testID === '__skl_box_static__' || undefined,
+          paragraphLines,
+          paragraphAlign,
+          paragraphWords: paragraph?.words,
         });
       }
     }
   }
 
-  // Recurse into children (depth + 1) then siblings (same depth)
-  if (fiber.child) {
+  // Recurse into children (depth + 1) then siblings (same depth).
+  // Paragraph wrappers skip children : the block is already collected as one.
+  if (fiber.child && !skipChildren) {
     walkFiber(fiber.child as Record<string, unknown>, depth + 1, maxDepth, excludeSet, out);
   }
   if (fiber.sibling) {
@@ -338,6 +359,9 @@ export function measureFiberLeaves(
             borderRadius: node.borderRadius,
             isSkeletonBox: node.isSkeletonBox,
             isSkeletonBoxStatic: node.isSkeletonBoxStatic,
+            paragraphLines: node.paragraphLines,
+            paragraphAlign: node.paragraphAlign,
+            paragraphWords: node.paragraphWords,
           });
         }
         remaining--;

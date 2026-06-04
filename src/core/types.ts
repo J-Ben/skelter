@@ -195,7 +195,50 @@ export interface MeasuredLayout {
   isSkeletonBoxStatic?: boolean;
   /** True when the element is marked SkeletonIgnore — skip measurement entirely */
   isSkeletonIgnore?: boolean;
+  /**
+   * When set, the measured block is a SkeletonParagraph : instead of a single
+   * bone, generateBones splits it into this many stacked line bones (last line
+   * shortened) to mimic flowing text instead of one solid rectangle.
+   */
+  paragraphLines?: number;
+  /**
+   * Horizontal alignment of the paragraph lines. Drives where the shortened
+   * last line sits. Inherited from the measured component's textAlign when not
+   * set explicitly. Defaults to 'left'.
+   */
+  paragraphAlign?: ParagraphAlign;
+  /**
+   * When true, each paragraph line is broken into several word-sized bones with
+   * gaps (word mode) instead of one solid bar per line.
+   */
+  paragraphWords?: boolean;
 }
+
+/**
+ * Horizontal alignment for SkeletonParagraph lines : mirrors text-align so the
+ * shortened last line sits on the correct side (or centred).
+ */
+export type ParagraphAlign = 'left' | 'center' | 'right';
+
+/**
+ * Rendering mode for SkeletonParagraph.
+ *
+ * 'lines' : one solid bar per line (default).
+ * 'words' : each line is split into word-sized bones separated by gaps.
+ */
+export type ParagraphMode = 'lines' | 'words';
+
+/**
+ * Size preset for SkeletonParagraph : controls how many skeleton lines a
+ * paragraph block is split into.
+ *
+ *   'sm' → 2 lines
+ *   'md' → 3 lines (default)
+ *   'lg' → 5 lines
+ *
+ * Override with the explicit `lines` prop for an exact count.
+ */
+export type ParagraphSize = 'sm' | 'md' | 'lg';
 
 /**
  * Measurement strategy for per-element skeleton generation.

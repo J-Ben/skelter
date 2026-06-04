@@ -22,9 +22,14 @@ export type {
   MeasureStrategy,
   WithSkeletonOptions,
   StaticBone,
+  ParagraphSize,
+  ParagraphAlign,
+  ParagraphMode,
 } from './core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from './core/constants';
 export { SkeletonBox } from './adapters/web/SkeletonBox';
 export type { SkeletonBoxProps } from './adapters/web/SkeletonBox';
 export { SkeletonIgnore } from './adapters/web/SkeletonIgnore';
 export type { SkeletonIgnoreProps } from './adapters/web/SkeletonIgnore';
+export { SkeletonParagraph } from './adapters/web/SkeletonParagraph';
+export type { SkeletonParagraphProps } from './adapters/web/SkeletonParagraph';

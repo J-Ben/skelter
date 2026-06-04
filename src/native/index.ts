@@ -35,6 +35,9 @@ export type {
   WithSkeletonOptions,
   BoneStyleOverride,
   StaticBone,
+  ParagraphSize,
+  ParagraphAlign,
+  ParagraphMode,
 } from '../core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from '../core/constants';
 export { registerSkeletonLeaf } from '../adapters/native/fiberWalker';
@@ -42,3 +45,5 @@ export { SkeletonBox } from '../adapters/native/SkeletonBox';
 export type { SkeletonBoxProps } from '../adapters/native/SkeletonBox';
 export { SkeletonIgnore } from '../adapters/native/SkeletonIgnore';
 export type { SkeletonIgnoreProps } from '../adapters/native/SkeletonIgnore';
+export { SkeletonParagraph } from '../adapters/native/SkeletonParagraph';
+export type { SkeletonParagraphProps } from '../adapters/native/SkeletonParagraph';
