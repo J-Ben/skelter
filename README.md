@@ -10,6 +10,10 @@
 
 **[→ Live demo](https://skelter.dev/demo) · [Docs](https://skelter.dev/docs)**
 
+<img width="800" height="450" alt="skelter paysage" src="https://github.com/user-attachments/assets/4048023e-f3ed-4543-b679-a35e3833d52c" />
+
+
+
 ---
 
 The skeleton loader is the first contact between your app and your user. That moment deserves care, not an afterthought maintained in a separate file that drifts from reality the moment you touch the real component.
