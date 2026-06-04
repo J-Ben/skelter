@@ -239,6 +239,76 @@ The measurement layer skips `SkeletonIgnore` entirely. The text stays visible wh
 
 ---
 
+## SkeletonParagraph
+
+A block of text measures as one tall rectangle, so its skeleton is a single solid pavé. Wrap it with `SkeletonParagraph` and it skeletons into several lines instead: body lines get a naturally ragged width and the last line is shortened, like real text.
+
+```tsx
+import { SkeletonParagraph } from 'react-zero-skeleton'
+
+function Article({ article }) {
+  return (
+    <View>
+      <Text style={s.title}>{article.title}</Text>
+      <SkeletonParagraph size="md">
+        <Text style={s.body}>{article.body}</Text>
+      </SkeletonParagraph>
+    </View>
+  )
+}
+```
+
+### Line count
+
+`size` is a preset; `lines` overrides it with an exact count.
+
+```tsx
+<SkeletonParagraph size="sm">…</SkeletonParagraph>   {/* 2 lines */}
+<SkeletonParagraph size="md">…</SkeletonParagraph>   {/* 3 lines (default) */}
+<SkeletonParagraph size="lg">…</SkeletonParagraph>   {/* 5 lines */}
+<SkeletonParagraph lines={7}>…</SkeletonParagraph>  {/* exactly 7 */}
+```
+
+### Alignment
+
+The shortened last line follows the text alignment. Pass `align` explicitly, or leave it out and it is **inherited from the wrapped component's `textAlign`** (computed style on web, the wrapper's style on React Native).
+
+```tsx
+{/* explicit */}
+<SkeletonParagraph size="md" align="center">…</SkeletonParagraph>
+
+{/* inherited: lines follow text-align: right */}
+<div style={{ textAlign: 'right' }}>
+  <SkeletonParagraph size="md"><p>{body}</p></SkeletonParagraph>
+</div>
+```
+
+> On React Native, `textAlign` lives on `Text`, not `View`. To inherit alignment, set `textAlign` on the `SkeletonParagraph` `style`, or pass the `align` prop (recommended for cross-platform).
+
+### Word mode
+
+`mode="words"` breaks each line into word-sized bones separated by gaps, for a more text-like placeholder.
+
+```tsx
+<SkeletonParagraph size="md" mode="words">
+  <Text>{article.body}</Text>
+</SkeletonParagraph>
+```
+
+### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Line count preset (2 / 3 / 5) |
+| `lines` | `number` | — | Exact line count; overrides `size` |
+| `align` | `'left' \| 'center' \| 'right'` | inherited → `'left'` | Alignment of the lines |
+| `mode` | `'lines' \| 'words'` | `'lines'` | One bar per line, or word-sized bones |
+| `style` | `ViewStyle` / `CSSProperties` | — | Style for the wrapper |
+
+All widths are deterministic, so they never flicker between renders. Works on web and React Native (iOS / Android).
+
+---
+
 ## API Reference
 
 ### Props added by `withSkeleton`
