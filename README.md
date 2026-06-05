@@ -309,6 +309,123 @@ All widths are deterministic, so they never flicker between renders. Works on we
 
 ---
 
+## Adaptive animation
+
+Skelter detects **nothing** itself. You bring your own signal source (NetInfo, `navigator.connection`, expo-battery, Low Power Mode…) and feed the values. Skelter only maps them to an animation.
+
+### How it works
+
+Pass `conditions` (your live signals) and an `adaptive` policy to `SkeletonTheme` or `skeletonConfig`. If a rule matches, its animation is used; if nothing matches, the `animation` prop you already set is used unchanged — the "everything is fine" case is free.
+
+```tsx
+// React Native example (NetInfo + expo-battery)
+import { useNetInfo } from '@react-native-community/netinfo';
+import { useBatteryLevel, useLowPowerMode } from 'expo-battery';
+
+function App() {
+  const { type } = useNetInfo();
+  const battery  = useBatteryLevel();   // 0..1
+  const lowPower = useLowPowerMode();
+
+  return (
+    <SkeletonTheme
+      animation="shatter"               // default: used when no rule matches
+      conditions={{ network: type, battery, saveData: lowPower }}
+      adaptive={[
+        { when: { network: ['slow-2g', '2g'] }, use: 'none'  },
+        { when: { saveData: true },             use: 'pulse' },
+        { when: { batteryBelow: 0.2 },          use: 'pulse' },
+        { when: { network: '3g' },              use: 'wave'  },
+      ]}
+    >
+      <HomeScreen />
+    </SkeletonTheme>
+  );
+}
+```
+
+```tsx
+// Web example (navigator.connection)
+const conn = (navigator as any).connection;
+
+<SkeletonTheme
+  animation="wave"
+  conditions={{
+    network: conn?.effectiveType,
+    saveData: conn?.saveData,
+  }}
+  adaptive={[
+    { when: { network: ['slow-2g', '2g'] }, use: 'none'  },
+    { when: { saveData: true },             use: 'pulse' },
+  ]}
+>
+```
+
+### Rule matrix (declarative)
+
+Rules are evaluated **in order** — the first match wins. Inside a rule, every key must hold (**AND**). Across rules, the first match is used (**OR**).
+
+```tsx
+adaptive={[
+  // AND: all conditions in a rule must hold
+  { when: { network: '3g', saveData: true }, use: 'none' },
+
+  // array = membership check
+  { when: { network: ['slow-2g', '2g'] }, use: 'none' },
+
+  // numeric threshold on battery (only matches when battery is known)
+  { when: { batteryBelow: 0.2 }, use: 'pulse' },
+
+  // custom signal — any key you put in conditions
+  { when: { thermal: ['serious', 'critical'] }, use: 'none' },
+]}
+```
+
+### Function (escape hatch)
+
+Return `undefined` to fall through to the base animation.
+
+```tsx
+adaptive={(conditions) => {
+  if (conditions.battery != null && conditions.battery < 0.15) return 'none';
+  if (conditions.network === '3g' && conditions.saveData) return 'pulse';
+  return undefined; // fall through → animation prop
+}}
+```
+
+### Per-element override
+
+Like any `SkeletonConfig`, the per-element `skeletonConfig` takes priority over `SkeletonTheme`. Conditions deep-merge; the adaptive policy uses the most specific level.
+
+```tsx
+// Global: wave on 3g
+<SkeletonTheme animation="wave" conditions={...} adaptive={...}>
+
+  // This card keeps its own policy regardless of the theme
+  <HeavyCard
+    hasSkeleton isLoading={loading}
+    skeletonConfig={{
+      animation: 'shatter',
+      adaptive: [{ when: { batteryBelow: 0.3 }, use: 'pulse' }],
+    }}
+  />
+</SkeletonTheme>
+```
+
+### `conditions` fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `network` | `NetworkType` | `'offline' \| 'slow-2g' \| '2g' \| '3g' \| '4g' \| '5g' \| 'wifi' \| 'unknown'` |
+| `battery` | `number` | Battery level `0..1` |
+| `charging` | `boolean` | Whether the device is charging |
+| `saveData` | `boolean` | OS data-saver / reduced-data preference |
+| `deviceTier` | `'low' \| 'mid' \| 'high'` | Coarse device capability |
+| `reducedMotion` | `boolean` | Accessibility reduce-motion (handled automatically if omitted) |
+| `[custom]` | `unknown` | Any extra signal — matched by rule keys |
+
+---
+
 ## API Reference
 
 ### Props added by `withSkeleton`
