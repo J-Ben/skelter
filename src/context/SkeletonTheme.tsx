@@ -1,7 +1,7 @@
 import React, { useMemo, useContext } from 'react';
 import { SkeletonContext } from './SkeletonContext';
 import { DEFAULT_SKELETON_CONFIG } from '../core/constants';
-import type { SkeletonConfig, SkeletonAnimation, SkeletonEnter, SkeletonExit } from '../core/types';
+import type { Adaptive, SkeletonConditions, SkeletonConfig, SkeletonAnimation, SkeletonEnter, SkeletonExit } from '../core/types';
 
 /**
  * SSR detection : disables auto mode child interception on the server.
@@ -52,6 +52,10 @@ export interface SkeletonThemeProps {
    * Default: 0 (all bones animate simultaneously).
    */
   cascade?: number;
+  /** Live device / connection signals from the consumer's own detection */
+  conditions?: SkeletonConditions;
+  /** Adaptive animation policy : matrix or function */
+  adaptive?: Adaptive;
   /**
    * If true, automatically injects hasSkeleton={true} on all
    * child components : zero touch required on individual components.
@@ -164,6 +168,8 @@ export function SkeletonTheme({
   exit,
   revealOnExit,
   cascade,
+  conditions,
+  adaptive,
   auto = false,
   exclude = [],
   children,
@@ -201,12 +207,15 @@ export function SkeletonTheme({
           ...imageConfig,
         },
       }),
+      ...(conditions !== undefined && { conditions }),
+      ...(adaptive !== undefined && { adaptive }),
     }),
     [
       parentContext.config,
       animation, color, highlightColor, speed,
       borderRadius, direction, minDuration,
       disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, cascade,
+      conditions, adaptive,
     ]
   );
 
