@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { generateBones } from '../../core/generateBones';
 import { DEFAULT_SKELETON_CONFIG } from '../../core/constants';
+import { resolveAnimation } from '../../core/adaptive';
 import type { Bone, SkeletonConfig, BoneTree } from '../../core/types';
 import { SkeletonContext } from '../../context/SkeletonContext';
 
@@ -52,21 +53,33 @@ export function useSkeleton({
 }: UseSkeletonArgs): UseSkeletonResult {
   const themeConfig = useContext(SkeletonContext);
 
-  const mergedConfig = useMemo((): Required<SkeletonConfig> => ({
-    ...DEFAULT_SKELETON_CONFIG,
-    ...themeConfig.config,
-    ...config,
-    shatterConfig: {
-      ...DEFAULT_SKELETON_CONFIG.shatterConfig,
-      ...themeConfig.config?.shatterConfig,
-      ...config?.shatterConfig,
-    },
-    imageConfig: {
-      ...DEFAULT_SKELETON_CONFIG.imageConfig,
-      ...themeConfig.config?.imageConfig,
-      ...config?.imageConfig,
-    },
-  }), [themeConfig.config, config]);
+  const mergedConfig = useMemo((): Required<SkeletonConfig> => {
+    const merged: Required<SkeletonConfig> = {
+      ...DEFAULT_SKELETON_CONFIG,
+      ...themeConfig.config,
+      ...config,
+      shatterConfig: {
+        ...DEFAULT_SKELETON_CONFIG.shatterConfig,
+        ...themeConfig.config?.shatterConfig,
+        ...config?.shatterConfig,
+      },
+      imageConfig: {
+        ...DEFAULT_SKELETON_CONFIG.imageConfig,
+        ...themeConfig.config?.imageConfig,
+        ...config?.imageConfig,
+      },
+      // conditions deep-merge across levels; adaptive policy = most specific wins
+      conditions: {
+        ...DEFAULT_SKELETON_CONFIG.conditions,
+        ...themeConfig.config?.conditions,
+        ...config?.conditions,
+      },
+      adaptive: config?.adaptive ?? themeConfig.config?.adaptive ?? DEFAULT_SKELETON_CONFIG.adaptive,
+    };
+    // Resolve the adaptive policy into the effective animation.
+    merged.animation = resolveAnimation(merged.animation, merged.conditions, merged.adaptive);
+    return merged;
+  }, [themeConfig.config, config]);
 
   /**
    * everSeenLoading : true once isLoading has been true at least once.

@@ -38,8 +38,14 @@ export type {
   ParagraphSize,
   ParagraphAlign,
   ParagraphMode,
+  SkeletonConditions,
+  AdaptiveRule,
+  Adaptive,
+  NetworkType,
+  DeviceTier,
 } from '../core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from '../core/constants';
+export { resolveAnimation } from '../core/adaptive';
 export { registerSkeletonLeaf } from '../adapters/native/fiberWalker';
 export { SkeletonBox } from '../adapters/native/SkeletonBox';
 export type { SkeletonBoxProps } from '../adapters/native/SkeletonBox';

@@ -113,6 +113,8 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   exit: 'fade' as const,
   revealOnExit: false,
   cascade: 0,
+  conditions: {},
+  adaptive: [],
 };
 
 /**
