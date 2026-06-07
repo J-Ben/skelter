@@ -106,6 +106,66 @@ export interface ShatterConfig {
   fadeStyle: ShatterFadeStyle;
 }
 
+/** Coarse network class the consumer feeds in (from their own detection). */
+export type NetworkType = 'offline' | 'slow-2g' | '2g' | '3g' | '4g' | '5g' | 'wifi' | 'unknown';
+
+/** Coarse device-capability tier the consumer feeds in. */
+export type DeviceTier = 'low' | 'mid' | 'high';
+
+/**
+ * Live device / connection signals the consumer provides. Skelter never detects
+ * them itself — bring your own source (NetInfo, navigator.connection, battery…)
+ * and pass the values. Known fields are typed; any extra custom key is allowed
+ * so adaptive rules can match anything (thermal state, A/B flags, etc.).
+ */
+export interface SkeletonConditions {
+  /** Connection class */
+  network?: NetworkType;
+  /** Battery level, 0..1 */
+  battery?: number;
+  /** Whether the device is charging */
+  charging?: boolean;
+  /** OS data-saver / reduced-data preference */
+  saveData?: boolean;
+  /** Device capability tier */
+  deviceTier?: DeviceTier;
+  /** Accessibility reduce-motion preference */
+  reducedMotion?: boolean;
+  /** Any custom signal to match against in adaptive rules */
+  [custom: string]: unknown;
+}
+
+/**
+ * A single adaptive rule. Every key in `when` must hold (AND); the first rule in
+ * the list whose `when` matches wins (OR across rules).
+ */
+export interface AdaptiveRule {
+  when: {
+    network?: NetworkType | NetworkType[];
+    saveData?: boolean;
+    charging?: boolean;
+    reducedMotion?: boolean;
+    deviceTier?: DeviceTier | DeviceTier[];
+    /** Matches when battery is known and strictly below this level (0..1) */
+    batteryBelow?: number;
+    /** Matches when battery is known and strictly above this level (0..1) */
+    batteryAbove?: number;
+    /** Any custom key: strict equality, or array membership */
+    [custom: string]: unknown;
+  };
+  /** Animation applied when this rule matches */
+  use: SkeletonAnimation;
+}
+
+/**
+ * Adaptive animation policy: either a declarative matrix of rules, or a function
+ * mapping the current conditions to an animation (return undefined to fall
+ * through to the base animation).
+ */
+export type Adaptive =
+  | AdaptiveRule[]
+  | ((conditions: SkeletonConditions) => SkeletonAnimation | undefined);
+
 /**
  * Full configuration for skeleton appearance and behavior.
  * All fields are optional : defaults are applied from DEFAULT_SKELETON_CONFIG.
@@ -171,6 +231,19 @@ export interface SkeletonConfig {
    * Default: 0 (unlimited)
    */
   maxBonesInList?: number;
+  /**
+   * Live device / connection signals fed by the consumer (Skelter detects
+   * nothing itself). Consumed by `adaptive` to choose the animation.
+   * Merged across DEFAULT < SkeletonTheme < skeletonConfig.
+   */
+  conditions?: SkeletonConditions;
+  /**
+   * Adaptive animation policy: a matrix of `when → use` rules, or a function of
+   * conditions. The resolved animation overrides `animation`. The most specific
+   * level wins (skeletonConfig over SkeletonTheme). Reduced-motion accessibility
+   * still forces a static skeleton regardless of this.
+   */
+  adaptive?: Adaptive;
 }
 
 /**
