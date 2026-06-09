@@ -1,6 +1,6 @@
 {
   "name": "react-zero-skeleton",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "The component IS the skeleton. Auto-measured at runtime, always in sync, zero maintenance. React & React Native.",
   "keywords": [
     "skeleton",
