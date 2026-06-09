@@ -1,5 +1,11 @@
 # skelter
 
+## 1.2.1
+
+### Patch Changes
+
+- bfd0363: Expand npm keywords for better discoverability: skeleton-loader, content-placeholder, bone, expo, nextjs, typescript, adaptive, network-aware, auto-skeleton.
+
 ## 1.2.0
 
 ### Minor Changes
