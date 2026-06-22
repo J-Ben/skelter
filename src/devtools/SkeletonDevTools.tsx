@@ -217,7 +217,8 @@ function Panel({
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                     {score !== undefined && (
                       <span style={{
-                        fontSize: 9, padding: '2px 5px', borderRadius: 20,
+                        fontSize: 9, lineHeight: 1, padding: '2px 5px', borderRadius: 20,
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
                         background: scoreColor(score.total), color: '#fff', fontWeight: 700, cursor: 'pointer',
                         boxShadow: isInspectedItem ? '0 0 0 2px #fff' : 'none',
                       }}
@@ -225,7 +226,8 @@ function Panel({
                       >{score.total}% {isExpanded ? '▲' : '▼'}</span>
                     )}
                     <span onClick={() => setForcedId(id, !isForced)} style={{
-                      fontSize: 9, padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
+                      fontSize: 9, lineHeight: 1, padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center',
                       background: isForced ? '#f97316' : T.btn, color: isForced ? '#fff' : T.btnText,
                     }}>{isForced ? '⏹' : '▶'}</span>
                   </div>
@@ -397,6 +399,9 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
   }), [tick, forceLoading, xray, highlight, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
 
   const count = componentsRef.current.size;
+  const allScores = Array.from(matchScoresRef.current.values()).map(s => s.total);
+  const avgPct = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : null;
+  const avgScore = avgPct !== null ? parseFloat((avgPct / 100 * 5).toFixed(1)) : null;
 
   if (pos.x === -1) return <DevToolsContext.Provider value={ctx}>{children}</DevToolsContext.Provider>;
 
@@ -435,15 +440,15 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
         }}
       >
         <SkelterIcon />
-        {count > 0 && (
+        {count > 0 && avgScore !== null && (
           <span style={{
             position: 'absolute', top: -2, right: -2,
-            background: '#f97316', color: '#fff',
+            background: scoreColor(avgPct!), color: '#fff',
             borderRadius: '50%', width: 18, height: 18,
             fontSize: 9, fontWeight: 700, fontFamily: 'monospace',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             pointerEvents: 'none', boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-          }}>{count}</span>
+          }}>{avgScore}</span>
         )}
       </button>
 

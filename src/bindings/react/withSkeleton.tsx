@@ -553,14 +553,17 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
         <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 400, display: 'flex', gap: 4, alignItems: 'center' }}>
           {score !== undefined && (
             <span onClick={e => { e.stopPropagation(); devTools.setInspectedId(isInspected ? null : id); }} style={{
-              background: scoreColor, color: '#fff', fontSize: 9, fontWeight: 700, fontFamily: 'monospace',
+              background: scoreColor, color: '#fff', fontSize: 9, lineHeight: 1, fontWeight: 700, fontFamily: 'monospace',
+              display: 'inline-flex', alignItems: 'center',
               padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
               boxShadow: isInspected ? `0 0 0 2px #fff, 0 0 0 4px ${scoreColor}` : '0 2px 6px rgba(0,0,0,0.4)',
             }}>{score.total}%</span>
           )}
           <span onClick={e => { e.stopPropagation(); devTools.setForcedId(id, !isForced); }} style={{
             background: isForced ? '#f97316' : 'rgba(39,39,42,0.9)', color: isForced ? '#fff' : '#a1a1aa',
-            fontSize: 9, fontWeight: 700, fontFamily: 'monospace', padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
+            fontSize: 9, lineHeight: 1, fontWeight: 700, fontFamily: 'monospace',
+            display: 'inline-flex', alignItems: 'center',
+            padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
             boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
           }}>{isForced ? '⏹' : '▶'}</span>
         </div>
@@ -712,7 +715,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   }, [isLoading, isLayoutCaptured]);
 
   useEffect(() => {
-    if (!dtEnabled || !isLayoutCaptured || bones.length === 0) return;
+    if (!dtEnabled || !isLayoutCaptured || structuralBones.length === 0) return;
     const refW = boneTree?.layout.width ?? contentRef.current?.offsetWidth ?? 0;
     const refH = boneTree?.layout.height ?? contentRef.current?.offsetHeight ?? 0;
     if (!refW || !refH) return;
@@ -720,6 +723,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     if (elems.length === 0) return;
 
     const diagonal = Math.sqrt(refW * refW + refH * refH) || 1;
+    const bones = structuralBones;
 
     // Paragraph bones are intentional approximations — exempt from fidelity/waste, treated as best-practice
     // Exempt intentional skeleton components from waste/fidelity scoring
@@ -784,7 +788,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
     const total = Math.round(fidelity * 0.5 + waste * 0.25 + coverage * 0.15 + stability * 0.1);
     setMatchScore(id, { total, fidelity, waste, coverage, stability, missedElements, ghostBones });
-  }, [dtEnabled, isLayoutCaptured, bones, id, setMatchScore, contentRef]);
+  }, [dtEnabled, isLayoutCaptured, structuralBones, id, setMatchScore, contentRef]);
 
   const isInspected = devTools.enabled && devTools.inspectedId === id;
   const isHighlight = devTools.enabled && devTools.highlight;
@@ -835,17 +839,17 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
       )}
 
       {/* Hover xray: light overlay when hovered in highlight mode */}
-      {isHighlight && isHovered && !xray && isLayoutCaptured && lastBonesRef.current.length > 0 && (
+      {isHighlight && isHovered && !xray && isLayoutCaptured && cachedBones.length > 0 && (
         <div style={{ ...overlayStyle, opacity: 0.35 }} aria-hidden="true" role="presentation">
-          {lastBonesRef.current.map((bone, index) => (
+          {cachedBones.map((bone, index) => (
             <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
           ))}
         </div>
       )}
 
       {/* Inspection overlay */}
-      {isInspected && isLayoutCaptured && lastBonesRef.current.length > 0 && (
-        <InspectionOverlay bones={lastBonesRef.current} containerW={containerW} containerH={containerH} contentRects={contentRectsRef.current} />
+      {isInspected && isLayoutCaptured && cachedBones.length > 0 && (
+        <InspectionOverlay bones={cachedBones} containerW={containerW} containerH={containerH} contentRects={contentRectsRef.current} />
       )}
 
       {/* Floating controls: score badge + play/stop */}
@@ -859,7 +863,8 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
               onClick={e => { e.stopPropagation(); devTools.setInspectedId(isInspected ? null : id); }}
               style={{
                 background: scoreColor, color: '#fff',
-                fontSize: 9, fontWeight: 700, fontFamily: 'monospace',
+                fontSize: 9, lineHeight: 1, fontWeight: 700, fontFamily: 'monospace',
+                display: 'inline-flex', alignItems: 'center',
                 padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
                 boxShadow: isInspected ? `0 0 0 2px #fff, 0 0 0 4px ${scoreColor}` : '0 2px 6px rgba(0,0,0,0.4)',
                 transition: 'box-shadow 0.15s',
@@ -871,7 +876,8 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
             style={{
               background: isForced ? '#f97316' : 'rgba(39,39,42,0.9)',
               color: isForced ? '#fff' : '#a1a1aa',
-              fontSize: 9, fontWeight: 700, fontFamily: 'monospace',
+              fontSize: 9, lineHeight: 1, fontWeight: 700, fontFamily: 'monospace',
+              display: 'inline-flex', alignItems: 'center',
               padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
               boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
               transition: 'background 0.15s',
