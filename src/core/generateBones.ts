@@ -104,7 +104,7 @@ function pushParagraphBones(node: BoneTree, bones: Bone[]): void {
     if (words) {
       pushWordBones(bones, lineX, lineY, lineWidth, lineHeight, radius, i);
     } else {
-      bones.push({ x: lineX, y: lineY, width: lineWidth, height: lineHeight, borderRadius: radius, type });
+      bones.push({ x: lineX, y: lineY, width: lineWidth, height: lineHeight, borderRadius: radius, type, isParagraph: true });
     }
   }
 }

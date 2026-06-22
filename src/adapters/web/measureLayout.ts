@@ -124,8 +124,13 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
 
         observer.observe(rootRef.current);
 
+        // Retry on next frame: initial ResizeObserver callback may fire before
+        // the scroll container has committed layout for off-screen items.
+        const frameId = requestAnimationFrame(() => measure());
+
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(frameId);
         };
     }, [measure]);
 

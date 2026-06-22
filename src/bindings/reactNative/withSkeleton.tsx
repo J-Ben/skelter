@@ -4,14 +4,19 @@ import React, {
   useState,
   useEffect,
   useContext,
+  useId,
   createContext,
   ComponentType,
 } from 'react';
-import { View, Animated, Easing, AccessibilityInfo } from 'react-native';
+import { useDevTools } from '../../context/DevToolsContext';
+import { View, Text, Pressable, Animated, Easing, AccessibilityInfo, UIManager } from 'react-native';
 import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
 import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
+import { generateBones } from '../../core/generateBones';
+import type { ScoringRect } from '../../adapters/native/measureLayout';
+import { measureFiberLeaves } from '../../adapters/native/fiberWalker';
 import { SkeletonBone } from '../../adapters/native/SkeletonBone';
 import { ShatterBone } from '../../adapters/native/ShatterBone';
 
@@ -157,6 +162,7 @@ export function withSkeleton<P extends object>(
         isLoading={resolvedIsLoading}
         skeletonConfig={skeletonConfig}
         hocOptions={resolvedOptions}
+        displayName={displayName}
       />
     );
   });
@@ -171,6 +177,7 @@ interface SkeletonRendererProps<P extends object> {
   isLoading: boolean;
   skeletonConfig?: SkeletonConfig;
   hocOptions: ResolvedHocOptions;
+  displayName: string;
 }
 
 const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
@@ -179,8 +186,11 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   isLoading,
   skeletonConfig,
   hocOptions,
-}: SkeletonRendererProps<P>) {
+  displayName,
+}: SkeletonRendererProps<P> & { displayName: string }) {
   const isInFlatList = useIsInFlatList();
+  const id = useId();
+  const { enabled, registerComponent, unregisterComponent, setMatchScore, setInspectedId, matchScores, forcedIds, forceLoading, xray, showWaste, highlight } = useDevTools();
 
   // In FlatList, per-element walk is expensive (50 items × N fibers).
   // Force root-only inside VirtualizedList.
@@ -191,24 +201,132 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       ? { ...skeletonConfig, animation: 'pulse' as const }
       : skeletonConfig;
 
-  const { boneTree, onRootLayout, isLayoutCaptured, warmupRef } = useMeasureLayout({
+  const { boneTree, onRootLayout, isLayoutCaptured, warmupRef, scoringLeaves } = useMeasureLayout({
     strategy: effectiveStrategy,
     maxDepth: hocOptions.maxDepth,
     exclude: hocOptions.exclude,
     boneStyle: hocOptions.boneStyle,
   });
 
+  const resolvedIsLoading = isLoading || (enabled && (forceLoading || forcedIds.has(id)));
+
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
     hasSkeleton: true,
-    isLoading,
+    isLoading: resolvedIsLoading,
     config: effectiveConfig,
     boneTree,
   });
 
+  // Cache last non-empty bones so x-ray can show them even after loading ends.
+  const lastBonesRef = useRef(bones);
+  if (bones.length > 0) lastBonesRef.current = bones;
+  const displayBones = xray ? lastBonesRef.current : bones;
+
+  // Real content ref + real leaves for waste overlay (measured from actual rendered content, not mock).
+  const realContentRef = useRef<View | null>(null);
+  const realLeavesRef = useRef<ScoringRect[]>([]);
+  const [, forceRealLeaves] = React.useReducer((n: number) => n + 1, 0);
+
+  useEffect(() => {
+    if (!enabled || resolvedIsLoading || !isLayoutCaptured || isSkeletonVisible) return;
+    const instance = realContentRef.current;
+    if (!instance) return;
+
+    const measure = (rootPageX: number, rootPageY: number) => {
+      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [] })
+        .then(layouts => {
+          if (layouts && layouts.length > 0 && boneTree) {
+            const realLeaves = layouts.map(l => ({
+              x: l.x, y: l.y, w: l.width, h: l.height,
+              textW: l.textContentWidth !== undefined ? Math.min(l.textContentWidth, l.width) : undefined,
+            }));
+            realLeavesRef.current = realLeaves;
+            forceRealLeaves();
+
+            // Recompute score from real content (overwrites mock-based score)
+            const sb = generateBones(boneTree);
+            if (sb.length > 0) {
+              const containerH = boneTree.layout.height;
+              let fidelitySum = 0; let missedElements = 0;
+              realLeaves.forEach(leaf => {
+                const best = sb.reduce((acc, b) => {
+                  const lw = leaf.textW ?? leaf.w;
+                  const ix = Math.max(0, Math.min(b.x + b.width, leaf.x + lw) - Math.max(b.x, leaf.x));
+                  const iy = Math.max(0, Math.min(b.y + b.height, leaf.y + leaf.h) - Math.max(b.y, leaf.y));
+                  const inter = ix * iy;
+                  const union = b.width * b.height + lw * leaf.h - inter;
+                  return Math.max(acc, union > 0 ? inter / union : 0);
+                }, 0);
+                if (best < 0.1) missedElements++;
+                fidelitySum += best;
+              });
+              const fidelity = Math.round((realLeaves.length > 0 ? fidelitySum / realLeaves.length : 0) * 100);
+              let ghostBones = 0;
+              const wasteRatios = sb.map(b => {
+                if (b.isParagraph || b.isStatic) return 1;
+                const bArea = b.width * b.height;
+                if (bArea === 0) return 1;
+                const covered = realLeaves.reduce((sum, leaf) => {
+                  const lw = leaf.textW ?? leaf.w;
+                  const ix = Math.max(0, Math.min(b.x + b.width, leaf.x + lw) - Math.max(b.x, leaf.x));
+                  const iy = Math.max(0, Math.min(b.y + b.height, leaf.y + leaf.h) - Math.max(b.y, leaf.y));
+                  return sum + ix * iy;
+                }, 0);
+                const ratio = Math.min(1, covered / bArea);
+                if (ratio < 0.1) ghostBones++;
+                return ratio;
+              });
+              const waste = Math.round((wasteRatios.reduce((a, b) => a + b, 0) / wasteRatios.length) * 100);
+              const coveredLeaves = realLeaves.filter(leaf =>
+                sb.some(b => {
+                  const lw = leaf.textW ?? leaf.w;
+                  const ix = Math.max(0, Math.min(b.x + b.width, leaf.x + lw) - Math.max(b.x, leaf.x));
+                  const iy = Math.max(0, Math.min(b.y + b.height, leaf.y + leaf.h) - Math.max(b.y, leaf.y));
+                  return ix * iy > 0;
+                })
+              ).length;
+              const coverage = Math.round(realLeaves.length > 0 ? (coveredLeaves / realLeaves.length) * 100 : 100);
+              const skeletonH = sb.reduce((max, b) => Math.max(max, b.y + b.height), 0);
+              const stability = Math.round(Math.max(0, 1 - Math.abs(skeletonH - containerH) / Math.max(containerH, 1)) * 100);
+              const total = Math.round(fidelity * 0.5 + waste * 0.25 + coverage * 0.15 + stability * 0.1);
+              setMatchScore(id, { total, fidelity, waste, coverage, stability, missedElements, ghostBones });
+            }
+          }
+        })
+        .catch(() => {});
+    };
+
+    const sn = instance as unknown as Record<string, unknown>;
+    const nativeTag = sn.__nativeTag as number | undefined;
+    if (nativeTag && nativeTag > 0) {
+      try {
+        UIManager.measure(nativeTag, (_x, _y, _w, _h, px, py) => measure(px, py));
+        return;
+      } catch { /* fall through */ }
+    }
+    if (typeof (instance as unknown as { measure?: unknown }).measure === 'function') {
+      (instance as unknown as { measure: (cb: (...a: number[]) => void) => void })
+        .measure((_x, _y, _w, _h, px, py) => measure(px, py));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, resolvedIsLoading, isLayoutCaptured, isSkeletonVisible]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    registerComponent(id, {
+      displayName,
+      animation: mergedConfig.animation ?? 'pulse',
+      bonesCount: bones.length,
+      isLoading: resolvedIsLoading,
+    });
+    return () => unregisterComponent(id);
+  }, [enabled, id, displayName, mergedConfig.animation, bones.length, resolvedIsLoading, registerComponent, unregisterComponent]);
+
+
   const visibleBones =
     isInFlatList && mergedConfig.maxBonesInList > 0
-      ? bones.slice(0, mergedConfig.maxBonesInList)
-      : bones;
+      ? displayBones.slice(0, mergedConfig.maxBonesInList)
+      : displayBones;
 
   // Single Animated.Value shared across all non-shatter bones.
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -223,7 +341,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // Single animation loop : drives all bones from this component.
   useEffect(() => {
     const animation = mergedConfig.animation;
-    if (!isSkeletonVisible || reduceMotion || animation === 'none' || animation === 'shatter') {
+    if ((!isSkeletonVisible && !xray) || reduceMotion || animation === 'none' || animation === 'shatter') {
       animatedValue.stopAnimation();
       return;
     }
@@ -271,7 +389,31 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
 
     anim.start();
     return () => anim.stop();
-  }, [isSkeletonVisible, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
+  }, [isSkeletonVisible, xray, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
+
+  const showBones = isLayoutCaptured && !!boneTree && visibleBones.length > 0;
+  const showXrayOverlay = xray && isLayoutCaptured && !!boneTree && visibleBones.length > 0;
+
+  const bonesLayer = showBones ? (
+    <View
+      style={{ width: boneTree!.layout.width, height: boneTree!.layout.height }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {visibleBones.map((bone, index) =>
+        mergedConfig.animation === 'shatter' ? (
+          <ShatterBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
+        ) : (
+          <SkeletonBone
+            key={`bone-${index}`}
+            bone={bone}
+            config={mergedConfig}
+            animatedValue={animatedValue}
+          />
+        )
+      )}
+    </View>
+  ) : null;
 
   return (
     <View>
@@ -286,30 +428,103 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </View>
       )}
 
-      {isSkeletonVisible && isLayoutCaptured && boneTree && (
+      {/* Normal skeleton mode: bones replace content, take up natural space */}
+      {isSkeletonVisible && bonesLayer}
+
+      {/* X-ray mode: content + bones overlay simultaneously */}
+      {(!isSkeletonVisible || isSSR) && (
+        <View ref={realContentRef} collapsable={false}>
+          <Component {...componentProps} />
+        </View>
+      )}
+      {showXrayOverlay && (
         <View
-          style={{ width: boneTree.layout.width, height: boneTree.layout.height }}
+          style={{ position: 'absolute', top: 0, left: 0, opacity: isSkeletonVisible ? 0.85 : 0.5 }}
+          pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {visibleBones.map((bone, index) =>
-            mergedConfig.animation === 'shatter' ? (
-              <ShatterBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
-            ) : (
-              <SkeletonBone
-                key={`bone-${index}`}
-                bone={bone}
-                config={mergedConfig}
-                animatedValue={animatedValue}
+          <View
+            style={{ width: boneTree!.layout.width, height: boneTree!.layout.height }}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {visibleBones.map((bone, index) => (
+              <View
+                key={`xray-${index}`}
+                style={{
+                  position: 'absolute',
+                  left: bone.x, top: bone.y,
+                  width: bone.width, height: bone.height,
+                  backgroundColor: '#71717a',
+                  borderRadius: bone.borderRadius ?? 4,
+                  opacity: 0.5,
+                }}
               />
-            )
-          )}
+            ))}
+          </View>
         </View>
       )}
 
-      {(!isSkeletonVisible || isSSR) && (
-        <Component {...componentProps} />
-      )}
+      {/* Waste overlay: red = wasted bone area, green = bone area covering REAL rendered content. */}
+      {showWaste && isLayoutCaptured && boneTree && realLeavesRef.current.length > 0 && (() => {
+        const wasteBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : generateBones(boneTree);
+        if (wasteBones.length === 0) return null;
+        return (
+        <View
+          style={{ position: 'absolute', top: 0, left: 0 }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {wasteBones.map((bone, bIdx) => (
+            <React.Fragment key={`waste-${bIdx}`}>
+              <View style={{
+                position: 'absolute',
+                left: bone.x, top: bone.y,
+                width: bone.width, height: bone.height,
+                backgroundColor: 'rgba(239,68,68,0.4)',
+                borderRadius: bone.borderRadius ?? 0,
+              }} />
+              {realLeavesRef.current.map((leaf, lIdx) => {
+                const lw = leaf.textW ?? leaf.w;
+                const x = Math.max(bone.x, leaf.x);
+                const y = Math.max(bone.y, leaf.y);
+                const r = Math.min(bone.x + bone.width, leaf.x + lw);
+                const b = Math.min(bone.y + bone.height, leaf.y + leaf.h);
+                if (r <= x || b <= y) return null;
+                return (
+                  <View key={`cov-${bIdx}-${lIdx}`} style={{
+                    position: 'absolute',
+                    left: x, top: y,
+                    width: r - x, height: b - y,
+                    backgroundColor: 'rgba(34,197,94,0.55)',
+                  }} />
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </View>
+        );
+      })()}
+
+      {/* Score badge overlay when scores panel is active */}
+      {highlight && enabled && isLayoutCaptured && boneTree && (() => {
+        const score = matchScores.get(id);
+        if (!score) return null;
+        const pct = score.total;
+        const color = pct >= 75 ? '#22c55e' : pct >= 45 ? '#f97316' : '#ef4444';
+        return (
+          <View style={{ position: 'absolute', top: 2, right: 2 }}>
+            <Pressable
+              onPress={() => setInspectedId(id)}
+              style={{ backgroundColor: color, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{pct}%</Text>
+            </Pressable>
+          </View>
+        );
+      })()}
     </View>
   );
 }) as <P extends object>(props: SkeletonRendererProps<P>) => React.ReactElement;
