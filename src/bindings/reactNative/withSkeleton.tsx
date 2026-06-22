@@ -190,7 +190,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
 }: SkeletonRendererProps<P> & { displayName: string }) {
   const isInFlatList = useIsInFlatList();
   const id = useId();
-  const { enabled, registerComponent, unregisterComponent, setMatchScore, setInspectedId, matchScores, forcedIds, forceLoading, xray, showWaste, highlight } = useDevTools();
+  const { enabled, registerComponent, unregisterComponent, setMatchScore, inspectedId, setInspectedId, matchScores, forcedIds, forceLoading, xray, showWaste, highlight } = useDevTools();
 
   // In FlatList, per-element walk is expensive (50 items × N fibers).
   // Force root-only inside VirtualizedList.
@@ -220,7 +220,13 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // Cache last non-empty bones so x-ray can show them even after loading ends.
   const lastBonesRef = useRef(bones);
   if (bones.length > 0) lastBonesRef.current = bones;
-  const displayBones = xray ? lastBonesRef.current : bones;
+  const isInspected = enabled && inspectedId === id;
+  // Components that mount already-loaded (e.g. list item remounted with a new key
+  // once real data arrives) never have visible bones to cache, so fall back to
+  // generating them straight from the measured boneTree.
+  const structuralBones = boneTree ? generateBones(boneTree) : [];
+  const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
+  const displayBones = (xray || isInspected) ? cachedBones : bones;
 
   // Real content ref + real leaves for waste overlay (measured from actual rendered content, not mock).
   const realContentRef = useRef<View | null>(null);
@@ -311,16 +317,18 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, resolvedIsLoading, isLayoutCaptured, isSkeletonVisible]);
 
+  const structuralBoneCount = structuralBones.length;
+
   useEffect(() => {
     if (!enabled) return;
     registerComponent(id, {
       displayName,
       animation: mergedConfig.animation ?? 'pulse',
-      bonesCount: bones.length,
+      bonesCount: structuralBoneCount,
       isLoading: resolvedIsLoading,
     });
     return () => unregisterComponent(id);
-  }, [enabled, id, displayName, mergedConfig.animation, bones.length, resolvedIsLoading, registerComponent, unregisterComponent]);
+  }, [enabled, id, displayName, mergedConfig.animation, structuralBoneCount, resolvedIsLoading, registerComponent, unregisterComponent]);
 
 
   const visibleBones =
@@ -392,7 +400,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   }, [isSkeletonVisible, xray, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
 
   const showBones = isLayoutCaptured && !!boneTree && visibleBones.length > 0;
-  const showXrayOverlay = xray && isLayoutCaptured && !!boneTree && visibleBones.length > 0;
+  const showXrayOverlay = (xray || isInspected) && isLayoutCaptured && !!boneTree && visibleBones.length > 0;
 
   const bonesLayer = showBones ? (
     <View

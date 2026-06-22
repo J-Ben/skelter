@@ -13,6 +13,7 @@ import { SKELETON_ENTER_MS, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
+import { generateBones } from '../../core/generateBones';
 
 
 type ExitPhase = 'visible' | 'exiting' | 'hidden';
@@ -614,7 +615,13 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   // them to be present while the exit animation plays out.
   const lastBonesRef = useRef<Bone[]>([]);
   if (bones.length > 0) lastBonesRef.current = bones;
-  const displayBones = (showOverlay || xray) ? lastBonesRef.current : [];
+  const isInspectedForOverlay = devTools.enabled && devTools.inspectedId === id;
+  // Components that mount already-loaded (e.g. list item remounted with a new key
+  // once real data arrives) never have visible bones to cache, so fall back to
+  // generating them straight from the measured boneTree.
+  const structuralBones = boneTree ? generateBones(boneTree) : [];
+  const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
+  const displayBones = (showOverlay || xray || isInspectedForOverlay) ? cachedBones : [];
 
   const revealOnExit = mergedConfig.revealOnExit;
   // isLoading hides on both server AND client so SSR HTML matches first client
@@ -644,16 +651,16 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   };
 
   const { enabled: dtEnabled, registerComponent, unregisterComponent, setMatchScore } = devTools;
+  const structuralBoneCount = structuralBones.length;
   useEffect(() => {
-    console.log('[skelter] WebSkeletonRenderer dtEnabled:', dtEnabled, 'displayName:', displayName);
     if (!dtEnabled) return;
     registerComponent(id, {
       displayName,
       animation: mergedConfig.animation,
-      bonesCount: bones.length,
+      bonesCount: structuralBoneCount,
       isLoading,
     });
-  }, [dtEnabled, registerComponent, id, displayName, mergedConfig.animation, bones.length, isLoading]);
+  }, [dtEnabled, registerComponent, id, displayName, mergedConfig.animation, structuralBoneCount, isLoading]);
 
   useEffect(() => {
     if (!dtEnabled) return;
@@ -807,9 +814,9 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         <Component {...(mockProps && isLoading ? { ...componentProps, ...mockProps } as P : componentProps as P)} />
       </div>
 
-      {/* Skeleton overlay (xray or loading) */}
-      {(showOverlay || xray) && (
-        <div style={{ ...overlayStyle, ...(xray ? { opacity: devTools.enabled && (devTools.forceLoading || isForced) ? 0.8 : 0.5 } : {}) }} aria-hidden="true" role="presentation">
+      {/* Skeleton overlay (xray, loading, or per-component inspect) */}
+      {(showOverlay || xray || isInspectedForOverlay) && (
+        <div style={{ ...overlayStyle, ...((xray || isInspectedForOverlay) ? { opacity: devTools.enabled && (devTools.forceLoading || isForced) ? 0.8 : 0.5 } : {}) }} aria-hidden="true" role="presentation">
           {displayBones.map((bone, index) => (
             <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
           ))}

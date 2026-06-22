@@ -2,7 +2,7 @@ import React, {
   useState, useCallback, useRef, useMemo, useEffect,
 } from 'react';
 import {
-  Dimensions, PanResponder, Pressable, ScrollView,
+  Animated, Dimensions, PanResponder, Pressable, ScrollView,
   StyleSheet, Text, View,
 } from 'react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -14,7 +14,115 @@ const GlassView: React.ComponentType<{ style?: object; intensity?: number; child
 const _Svg = _svg?.default ?? _svg?.Svg ?? null;
 const _Polygon = _svg?.Polygon ?? null;
 const _G = _svg?.G ?? null;
+const _Path = _svg?.Path ?? null;
+const _Line = _svg?.Line ?? null;
+const _Polyline = _svg?.Polyline ?? null;
+const _Rect = _svg?.Rect ?? null;
+const _Circle = _svg?.Circle ?? null;
 import { DevToolsContext, type ComponentInfo, type MatchScore } from '../context/DevToolsContext';
+
+type IconName =
+  | 'play' | 'pause' | 'stop' | 'eye' | 'eyeOff' | 'grid' | 'barChart'
+  | 'moon' | 'sun' | 'close' | 'maximize' | 'minimize' | 'chevronUp' | 'chevronDown';
+
+const ICON_TEXT_FALLBACK: Record<IconName, string> = {
+  play: '▶', pause: '⏸', stop: '⏹', eye: '◎', eyeOff: '✕',
+  grid: '▦', barChart: '▤', moon: '☾', sun: '☀', close: '✕',
+  maximize: '⤢', minimize: '⤡', chevronUp: '▲', chevronDown: '▼',
+};
+
+// Feather-style stroke icons. Falls back to a plain-text glyph if
+// react-native-svg isn't installed — keeps the devtool usable without the dep.
+function Icon({ name, size = 12, color = '#a1a1aa' }: { name: IconName; size?: number; color?: string }) {
+  if (!_Svg || !_Path) {
+    return <Text style={{ fontSize: size, color, lineHeight: size + 2 }}>{ICON_TEXT_FALLBACK[name]}</Text>;
+  }
+  const SvgEl = _Svg as React.ComponentType<{ width: number; height: number; viewBox: string; children?: React.ReactNode }>;
+  const common = { stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  // Untyped passthrough props (d/x1/points/etc vary per primitive) — this is
+  // internal icon rendering, not part of the library's public typed API.
+  const PathEl = _Path as React.ComponentType<any>;
+  const LineEl = (_Line ?? PathEl) as React.ComponentType<any>;
+  const PolylineEl = _Polyline as React.ComponentType<any> | null;
+  const RectEl = _Rect as React.ComponentType<any> | null;
+  const CircleEl = _Circle as React.ComponentType<any> | null;
+
+  let body: React.ReactNode = null;
+  switch (name) {
+    case 'play':
+      body = <PathEl d="M6 3l15 9-15 9V3z" fill={color} stroke="none" />;
+      break;
+    case 'pause':
+      body = <>{RectEl && <RectEl x={5} y={3} width={5} height={18} rx={1} fill={color} stroke="none" />}{RectEl && <RectEl x={14} y={3} width={5} height={18} rx={1} fill={color} stroke="none" />}</>;
+      break;
+    case 'stop':
+      body = RectEl ? <RectEl x={4} y={4} width={16} height={16} rx={3} fill={color} stroke="none" /> : null;
+      break;
+    case 'eye':
+      body = <>
+        <PathEl d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" {...common} />
+        {CircleEl && <CircleEl cx={12} cy={12} r={3} {...common} />}
+      </>;
+      break;
+    case 'eyeOff':
+      body = <>
+        <PathEl d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2" {...common} />
+        <LineEl x1={1} y1={1} x2={23} y2={23} {...common} />
+      </>;
+      break;
+    case 'grid':
+      body = RectEl ? <>
+        <RectEl x={3} y={3} width={7} height={7} {...common} />
+        <RectEl x={14} y={3} width={7} height={7} {...common} />
+        <RectEl x={14} y={14} width={7} height={7} {...common} />
+        <RectEl x={3} y={14} width={7} height={7} {...common} />
+      </> : null;
+      break;
+    case 'barChart':
+      body = <>
+        <LineEl x1={18} y1={20} x2={18} y2={10} {...common} />
+        <LineEl x1={12} y1={20} x2={12} y2={4} {...common} />
+        <LineEl x1={6} y1={20} x2={6} y2={14} {...common} />
+      </>;
+      break;
+    case 'moon':
+      body = <PathEl d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" {...common} />;
+      break;
+    case 'sun':
+      body = <>
+        {CircleEl && <CircleEl cx={12} cy={12} r={5} {...common} />}
+        <LineEl x1={12} y1={1} x2={12} y2={3} {...common} />
+        <LineEl x1={12} y1={21} x2={12} y2={23} {...common} />
+        <LineEl x1={4.2} y1={4.2} x2={5.6} y2={5.6} {...common} />
+        <LineEl x1={18.4} y1={18.4} x2={19.8} y2={19.8} {...common} />
+        <LineEl x1={1} y1={12} x2={3} y2={12} {...common} />
+        <LineEl x1={21} y1={12} x2={23} y2={12} {...common} />
+        <LineEl x1={4.2} y1={19.8} x2={5.6} y2={18.4} {...common} />
+        <LineEl x1={18.4} y1={5.6} x2={19.8} y2={4.2} {...common} />
+      </>;
+      break;
+    case 'close':
+      body = <>
+        <LineEl x1={18} y1={6} x2={6} y2={18} {...common} />
+        <LineEl x1={6} y1={6} x2={18} y2={18} {...common} />
+      </>;
+      break;
+    case 'maximize':
+      body = <PathEl d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" {...common} />;
+      break;
+    case 'minimize':
+      body = <PathEl d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" {...common} />;
+      break;
+    case 'chevronUp':
+      body = PolylineEl ? <PolylineEl points="18 15 12 9 6 15" {...common} /> : null;
+      break;
+    case 'chevronDown':
+      body = PolylineEl ? <PolylineEl points="6 9 12 15 18 9" {...common} /> : null;
+      break;
+  }
+  if (!body) return <Text style={{ fontSize: size, color, lineHeight: size + 2 }}>{ICON_TEXT_FALLBACK[name]}</Text>;
+  return <SvgEl width={size} height={size} viewBox="0 0 24 24">{body}</SvgEl>;
+}
 
 const BTN = 48;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -69,6 +177,26 @@ function scoreColor(score: number) {
   return '#ef4444';
 }
 
+function usePanelTheme(mode: 'dark' | 'light') {
+  const dark = mode !== 'light';
+  return useMemo(() => ({
+    dark,
+    sheetBg: dark ? 'rgba(12,12,14,0.72)' : 'rgba(255,255,255,0.8)',
+    title: dark ? '#f4f4f5' : '#18181b',
+    titleLabel: dark ? '#52525b' : '#a1a1aa',
+    text: dark ? '#a1a1aa' : '#52525b',
+    border: dark ? '#1f1f23' : 'rgba(0,0,0,0.08)',
+    row: dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+    ctrlBtn: dark ? '#27272a' : '#e4e4e7',
+    ctrlBtnText: dark ? '#a1a1aa' : '#52525b',
+    forceBadge: dark ? '#27272a' : '#e4e4e7',
+    forceBadgeText: dark ? '#a1a1aa' : '#52525b',
+    dragBar: dark ? '#3f3f46' : '#d4d4d8',
+    closeBtnText: dark ? '#71717a' : '#71717a',
+    scoreBarBg: dark ? '#27272a' : '#e4e4e7',
+  }), [dark]);
+}
+
 /* ─── Panel ─────────────────────────────────────────────────── */
 function Panel({
   visible, onClose,
@@ -77,8 +205,10 @@ function Panel({
   xray, setXray,
   showWaste, setShowWaste,
   components, forcedIds, setForcedId, matchScores,
-  inspectedId,
+  inspectedId, setInspectedId,
   panelPos, panHandlers,
+  panelTheme, setPanelTheme,
+  anim, fabPos,
 }: {
   visible: boolean; onClose: () => void;
   forceLoading: boolean; setForceLoading: (v: boolean) => void;
@@ -87,19 +217,24 @@ function Panel({
   showWaste: boolean; setShowWaste: (v: boolean) => void;
   components: Map<string, ComponentInfo>;
   forcedIds: Set<string>;
+  setInspectedId: (id: string | null) => void;
   setForcedId: (id: string, forced: boolean) => void;
   matchScores: Map<string, MatchScore>;
   inspectedId: string | null;
   panelPos: { x: number; y: number };
   panHandlers: object;
+  anim: Animated.Value;
+  fabPos: { x: number; y: number };
+  panelTheme: 'dark' | 'light';
+  setPanelTheme: (v: 'dark' | 'light') => void;
 }) {
+  const T = usePanelTheme(panelTheme);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [size, setSize] = useState<'compact' | 'normal' | 'tall'>('normal');
   const scrollRef = useRef<ScrollView>(null);
   const rowOffsetsRef = useRef<Map<string, number>>(new Map());
 
   const listHeight = size === 'compact' ? 120 : size === 'tall' ? SCREEN_H * 0.45 : SCREEN_H * 0.28;
-  const sizeIcon = size === 'compact' ? '⊡' : size === 'normal' ? '⊟' : '⊞';
   const nextSize = () => setSize(s => s === 'compact' ? 'normal' : s === 'normal' ? 'tall' : 'compact');
 
   useEffect(() => {
@@ -111,8 +246,6 @@ function Panel({
     }
   }, [visible, inspectedId]);
 
-  if (!visible) return null;
-
   const list = Array.from(components.entries());
   const scores = list.map(([id]) => matchScores.get(id)?.total).filter((s): s is number => s !== undefined);
   const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
@@ -121,30 +254,46 @@ function Panel({
   const SheetEl = GlassView ?? View;
   const glassProps = GlassView ? { intensity: 60 } : {};
 
+  const sheetW = SCREEN_W - 16;
+  const sheetH = 320;
+  const dx = (fabPos.x + BTN / 2) - (panelPos.x + sheetW / 2);
+  const dy = (fabPos.y + BTN / 2) - (panelPos.y + sheetH / 2);
+  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [dx, 0] });
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [dy, 0] });
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 1] });
+
   return (
-    <SheetEl {...glassProps} style={[s.sheet, !GlassView && s.sheetFallback, { position: 'absolute', left: panelPos.x, top: panelPos.y }] as any} pointerEvents="box-none">
+    <Animated.View
+      style={[s.sheetShadow, { position: 'absolute', left: panelPos.x, top: panelPos.y, opacity: anim, transform: [{ translateX }, { translateY }, { scale }] }]}
+      pointerEvents={visible ? 'box-none' : 'none'}
+    >
+    <SheetEl {...glassProps} style={[s.sheet, !GlassView && s.sheetFallback, { backgroundColor: T.sheetBg }] as any} pointerEvents="box-none">
       {/* Drag handle */}
       <View style={s.dragHandle} {...panHandlers}>
-        <View style={s.dragBar} />
+        <View style={[s.dragBar, { backgroundColor: T.dragBar }]} />
         {/* Header */}
         <View style={s.header}>
           <View style={s.headerLeft}>
             <View style={s.titleBlock}>
-              <Text style={s.titleLabel}>skelter</Text>
-              <Text style={s.title}>UI Quality</Text>
+              <Text style={[s.titleLabel, { color: T.titleLabel }]}>skelter</Text>
+              <Text style={[s.title, { color: T.title }]}>UI Quality</Text>
             </View>
             {scoreOn5 !== null && (
               <Text style={[s.globalScore, { color: scoreColor(avgScore!) }]}>
-                {scoreOn5}<Text style={s.globalScoreDenom}>/5</Text>
+                {scoreOn5}<Text style={[s.globalScoreDenom, { color: T.titleLabel }]}>/5</Text>
               </Text>
             )}
           </View>
           <View style={s.headerRight}>
-            <Pressable onPress={nextSize} style={s.closeBtn}>
-              <Text style={s.closeBtnText}>{sizeIcon}</Text>
+            <Pressable onPress={() => setPanelTheme(panelTheme === 'dark' ? 'light' : 'dark')} style={s.closeBtn}>
+              <Icon name={panelTheme === 'dark' ? 'moon' : 'sun'} size={14} color={T.closeBtnText} />
+            </Pressable>
+            <Pressable onPress={nextSize} style={[s.closeBtn, s.sizeBtn]}>
+              <Icon name={size === 'tall' ? 'minimize' : 'maximize'} size={12} color={T.closeBtnText} />
+              <Text style={[s.sizeBtnText, { color: T.closeBtnText }]}>{size}</Text>
             </Pressable>
             <Pressable onPress={onClose} style={s.closeBtn}>
-              <Text style={s.closeBtnText}>✕</Text>
+              <Icon name="close" size={14} color={T.closeBtnText} />
             </Pressable>
           </View>
         </View>
@@ -152,55 +301,66 @@ function Panel({
 
       {/* Controls */}
       <View style={s.controls}>
-        <Pressable style={[s.ctrlBtn, forceLoading && s.ctrlBtnActive]} onPress={() => setForceLoading(!forceLoading)}>
-          <Text style={[s.ctrlBtnText, forceLoading && s.ctrlBtnTextActive]}>{forceLoading ? '⏸ data' : '▶ force'}</Text>
+        <Pressable style={[s.ctrlBtn, { backgroundColor: T.ctrlBtn }, forceLoading && s.ctrlBtnActive]} onPress={() => setForceLoading(!forceLoading)}>
+          <Icon name={forceLoading ? 'pause' : 'play'} size={11} color={forceLoading ? '#fff' : T.ctrlBtnText} />
+          <Text style={[s.ctrlBtnText, { color: T.ctrlBtnText }, forceLoading && s.ctrlBtnTextActive]}>force</Text>
         </Pressable>
-        <Pressable style={[s.ctrlBtn, xray && s.ctrlBtnXray]} onPress={() => setXray(!xray)}>
-          <Text style={[s.ctrlBtnText, xray && s.ctrlBtnTextActive]}>{xray ? '✕ x-ray' : '◎ x-ray'}</Text>
+        <Pressable style={[s.ctrlBtn, { backgroundColor: T.ctrlBtn }, xray && s.ctrlBtnXray]} onPress={() => setXray(!xray)}>
+          <Icon name={xray ? 'eyeOff' : 'eye'} size={11} color={xray ? '#fff' : T.ctrlBtnText} />
+          <Text style={[s.ctrlBtnText, { color: T.ctrlBtnText }, xray && s.ctrlBtnTextActive]}>x-ray</Text>
         </Pressable>
-        <Pressable style={[s.ctrlBtn, showWaste && s.ctrlBtnWaste]} onPress={() => setShowWaste(!showWaste)}>
-          <Text style={[s.ctrlBtnText, showWaste && s.ctrlBtnTextActive]}>{showWaste ? '✕ waste' : '◧ waste'}</Text>
+        <Pressable style={[s.ctrlBtn, { backgroundColor: T.ctrlBtn }, showWaste && s.ctrlBtnWaste]} onPress={() => setShowWaste(!showWaste)}>
+          <Icon name="grid" size={11} color={showWaste ? '#fff' : T.ctrlBtnText} />
+          <Text style={[s.ctrlBtnText, { color: T.ctrlBtnText }, showWaste && s.ctrlBtnTextActive]}>waste</Text>
         </Pressable>
-        <Pressable style={[s.ctrlBtn, highlight && s.ctrlBtnHighlight]} onPress={() => setHighlight(!highlight)}>
-          <Text style={[s.ctrlBtnText, highlight && s.ctrlBtnTextActive]}>{highlight ? '✕ scores' : '⊞ scores'}</Text>
+        <Pressable style={[s.ctrlBtn, { backgroundColor: T.ctrlBtn }, highlight && s.ctrlBtnHighlight]} onPress={() => setHighlight(!highlight)}>
+          <Icon name="barChart" size={11} color={highlight ? '#fff' : T.ctrlBtnText} />
+          <Text style={[s.ctrlBtnText, { color: T.ctrlBtnText }, highlight && s.ctrlBtnTextActive]}>scores</Text>
         </Pressable>
       </View>
 
-      <View style={s.divider} />
+      <View style={[s.divider, { backgroundColor: T.border }]} />
 
       <ScrollView ref={scrollRef} style={[s.list, { height: listHeight }]} contentContainerStyle={s.listContent}>
         {list.length === 0 ? (
-          <Text style={s.empty}>No components mounted.</Text>
+          <Text style={[s.empty, { color: T.titleLabel }]}>No components mounted.</Text>
         ) : (
           list.map(([id, info]) => {
             const isForced = forcedIds.has(id);
             const score = matchScores.get(id);
             const isExpanded = expanded === id;
+            const isInspected = inspectedId === id;
             return (
-              <View key={id} style={s.row} onLayout={e => rowOffsetsRef.current.set(id, e.nativeEvent.layout.y)}>
+              <Pressable
+                key={id}
+                style={[s.row, { backgroundColor: T.row }, isInspected && s.rowInspected]}
+                onLayout={e => rowOffsetsRef.current.set(id, e.nativeEvent.layout.y)}
+                onPress={() => setInspectedId(isInspected ? null : id)}
+              >
                 <View style={s.rowMain}>
-                  <Text style={s.rowName} numberOfLines={1}>{info.displayName}</Text>
+                  <Text style={[s.rowName, { color: T.title }]} numberOfLines={1}>{info.displayName}</Text>
                   <View style={s.rowActions}>
                     {score !== undefined && (
                       <Pressable style={[s.scoreBadge, { backgroundColor: scoreColor(score.total) }]} onPress={() => setExpanded(isExpanded ? null : id)}>
-                        <Text style={s.scoreBadgeText}>{score.total}% {isExpanded ? '▲' : '▼'}</Text>
+                        <Text style={s.scoreBadgeText}>{score.total}%</Text>
+                        <Icon name={isExpanded ? 'chevronUp' : 'chevronDown'} size={9} color="#fff" />
                       </Pressable>
                     )}
-                    <Pressable style={[s.forceBadge, isForced && s.forceBadgeActive]} onPress={() => setForcedId(id, !isForced)}>
-                      <Text style={[s.forceBadgeText, isForced && s.forceBadgeTextActive]}>{isForced ? '⏹' : '▶'}</Text>
+                    <Pressable style={[s.forceBadge, { backgroundColor: T.forceBadge }, isForced && s.forceBadgeActive]} onPress={() => setForcedId(id, !isForced)}>
+                      <Icon name={isForced ? 'stop' : 'play'} size={9} color={isForced ? '#fff' : T.forceBadgeText} />
                     </Pressable>
                   </View>
                 </View>
                 <View style={s.rowMeta}>
-                  <Text style={s.metaText}>anim: <Text style={s.metaVal}>{info.animation}</Text></Text>
-                  <Text style={s.metaText}>bones: <Text style={s.metaVal}>{info.bonesCount}</Text></Text>
+                  <Text style={[s.metaText, { color: T.text }]}>anim: <Text style={[s.metaVal, { color: T.title }]}>{info.animation}</Text></Text>
+                  <Text style={[s.metaText, { color: T.text }]}>bones: <Text style={[s.metaVal, { color: T.title }]}>{info.bonesCount}</Text></Text>
                 </View>
                 {isExpanded && score && (
                   <View style={s.scoreDetail}>
                     {(['fidelity', 'waste', 'coverage', 'stability'] as const).map(k => (
                       <View key={k} style={s.scoreRow}>
-                        <Text style={s.scoreLabel}>{k}</Text>
-                        <View style={s.scoreBarBg}>
+                        <Text style={[s.scoreLabel, { color: T.text }]}>{k}</Text>
+                        <View style={[s.scoreBarBg, { backgroundColor: T.scoreBarBg }]}>
                           <View style={[s.scoreBarFill, { width: `${score[k]}%` as any, backgroundColor: scoreColor(score[k]) }]} />
                         </View>
                         <Text style={[s.scoreVal, { color: scoreColor(score[k]) }]}>{score[k]}%</Text>
@@ -208,12 +368,13 @@ function Panel({
                     ))}
                   </View>
                 )}
-              </View>
+              </Pressable>
             );
           })
         )}
       </ScrollView>
     </SheetEl>
+    </Animated.View>
   );
 }
 
@@ -234,13 +395,27 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
   const [xray, setXray] = useState(false);
   const [showWaste, setShowWaste] = useState(false);
   const [open, setOpen] = useState(false);
+  const [panelMounted, setPanelMounted] = useState(false);
+  const panelAnim = useRef(new Animated.Value(0)).current;
+  const [panelTheme, setPanelTheme] = useState<'dark' | 'light'>('dark');
   const [inspectedId, setInspectedIdState] = useState<string | null>(null);
   const openAndInspect = useCallback((id: string | null) => {
     setInspectedIdState(id);
     if (id) setOpen(true);
   }, []);
 
-  const [panelPos, setPanelPos] = useState({ x: 8, y: height * 0.35 });
+  useEffect(() => {
+    if (open) {
+      setPanelMounted(true);
+      Animated.spring(panelAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(panelAnim, { toValue: 0, duration: 180, useNativeDriver: true })
+        .start(() => setPanelMounted(false));
+    }
+  }, [open, panelAnim]);
+
+  const ESTIMATED_SHEET_HEIGHT = height * 0.28 + 150;
+  const [panelPos, setPanelPos] = useState({ x: 8, y: Math.max(8, height - ESTIMATED_SHEET_HEIGHT - 8) });
   const panelPosRef = useRef(panelPos);
   panelPosRef.current = panelPos;
   const panelStartPos = useRef({ x: 8, y: height * 0.35 });
@@ -286,10 +461,14 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
     forceRender(n => n + 1);
   }, []);
 
+  const fabScale = useRef(new Animated.Value(1)).current;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
+      onPanResponderGrant: () => {
+        Animated.timing(fabScale, { toValue: 0.85, duration: 100, useNativeDriver: true }).start();
+      },
       onPanResponderMove: (_, g) => {
         setPos({
           x: Math.min(Math.max(0, g.moveX - BTN / 2), width - BTN),
@@ -297,7 +476,11 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
         });
       },
       onPanResponderRelease: (_, g) => {
+        Animated.spring(fabScale, { toValue: 1, friction: 3, tension: 200, useNativeDriver: true }).start();
         if (Math.abs(g.dx) < 4 && Math.abs(g.dy) < 4) setOpen(o => !o);
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(fabScale, { toValue: 1, friction: 3, tension: 200, useNativeDriver: true }).start();
       },
     })
   ).current;
@@ -328,10 +511,16 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
       <View style={s.root}>
         {children}
 
+        {panelMounted && (
         <Panel
           visible={open}
           onClose={() => { setOpen(false); setInspectedIdState(null); }}
           inspectedId={inspectedId}
+          setInspectedId={openAndInspect}
+          panelTheme={panelTheme}
+          setPanelTheme={setPanelTheme}
+          anim={panelAnim}
+          fabPos={pos}
           panelPos={panelPos}
           panHandlers={panelPanResponder.panHandlers}
           forceLoading={forceLoading}
@@ -347,10 +536,11 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
           setForcedId={setForcedId}
           matchScores={matchScoresRef.current}
         />
+        )}
 
         {/* Floating button */}
-        <View
-          style={[s.fab, { left: pos.x, top: pos.y, backgroundColor: forceLoading ? '#f97316' : '#18181b' }]}
+        <Animated.View
+          style={[s.fab, { left: pos.x, top: pos.y, backgroundColor: forceLoading ? '#f97316' : '#18181b', transform: [{ scale: fabScale }] }]}
           {...panResponder.panHandlers}
         >
           <SkelterIcon />
@@ -359,7 +549,7 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
               <Text style={s.badgeText}>{avgScore}</Text>
             </View>
           )}
-        </View>
+        </Animated.View>
       </View>
     </DevToolsContext.Provider>
   );
@@ -369,17 +559,19 @@ const s = StyleSheet.create({
   root: {
     flex: 1,
   },
+  sheetShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    elevation: 20,
+  },
   sheet: {
     backgroundColor: 'rgba(12,12,14,0.55)',
     borderRadius: 16,
     width: SCREEN_W - 16,
     paddingBottom: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.7,
-    shadowRadius: 20,
-    elevation: 20,
   },
   sheetFallback: {
     backgroundColor: 'rgba(12,12,14,0.88)',
@@ -446,6 +638,17 @@ const s = StyleSheet.create({
   closeBtn: {
     padding: 6,
   },
+  sizeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  sizeBtnText: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   closeBtnText: {
     color: '#71717a',
     fontSize: 14,
@@ -462,6 +665,9 @@ const s = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
   },
   ctrlBtnActive: {
     backgroundColor: '#f97316',
@@ -508,6 +714,11 @@ const s = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
+  rowInspected: {
+    backgroundColor: 'rgba(99,102,241,0.18)',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
   rowMain: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -532,6 +743,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   scoreBadgeText: {
     color: '#fff',

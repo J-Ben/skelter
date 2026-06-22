@@ -307,7 +307,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
   const componentsRef = useRef<Map<string, ComponentInfo>>(new Map());
   const forcedIdsRef = useRef<Set<string>>(new Set());
   const matchScoresRef = useRef<Map<string, MatchScore>>(new Map());
-  const [, forceRender] = useState(0);
+  const [tick, forceRender] = useState(0);
 
   // Throw animation on mount
   useEffect(() => {
@@ -394,7 +394,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
     components: componentsRef.current,
     registerComponent,
     unregisterComponent,
-  }), [forceLoading, xray, highlight, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
+  }), [tick, forceLoading, xray, highlight, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
 
   const count = componentsRef.current.size;
 
