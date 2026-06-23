@@ -22,5 +22,22 @@ export type {
   MeasureStrategy,
   WithSkeletonOptions,
   StaticBone,
+  ParagraphSize,
+  ParagraphAlign,
+  ParagraphMode,
+  SkeletonConditions,
+  AdaptiveRule,
+  Adaptive,
+  NetworkType,
+  DeviceTier,
 } from './core/types';
 export { DEFAULT_SKELETON_CONFIG, resolveSpeed } from './core/constants';
+export { resolveAnimation } from './core/adaptive';
+export { DevToolsContext, useDevTools } from './context/DevToolsContext';
+export type { DevToolsContextValue, ComponentInfo, MatchScore } from './context/DevToolsContext';
+export { SkeletonBox } from './adapters/web/SkeletonBox';
+export type { SkeletonBoxProps } from './adapters/web/SkeletonBox';
+export { SkeletonIgnore } from './adapters/web/SkeletonIgnore';
+export type { SkeletonIgnoreProps } from './adapters/web/SkeletonIgnore';
+export { SkeletonParagraph } from './adapters/web/SkeletonParagraph';
+export type { SkeletonParagraphProps } from './adapters/web/SkeletonParagraph';

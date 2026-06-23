@@ -1,5 +1,54 @@
 # skelter
 
+## 1.2.1
+
+### Patch Changes
+
+- bfd0363: Expand npm keywords for better discoverability: skeleton-loader, content-placeholder, bone, expo, nextjs, typescript, adaptive, network-aware, auto-skeleton.
+
+## 1.2.0
+
+### Minor Changes
+
+- 776c996: Add adaptive animation: pick the skeleton animation from device / connection signals the consumer provides. Skelter detects nothing itself — bring your own source (NetInfo, navigator.connection, battery…) and feed the values; the library only maps them to an animation.
+
+  - `conditions` (network, battery, saveData, deviceTier, charging, reducedMotion + any custom signal) on `SkeletonTheme` (global) or `skeletonConfig` (per-element)
+  - `adaptive` policy: a `when → use` rule matrix (AND within a rule, first match wins) or a function of conditions
+  - The resolved animation overrides `animation`; reduced-motion accessibility still forces a static skeleton
+  - Pure, zero-dependency, works on web and React Native
+
+## 1.1.0
+
+### Minor Changes
+
+- 1609c94: Add `SkeletonParagraph`: wrap a block of text so it skeletons into several lines instead of one solid block.
+
+  - `size` presets (`sm` = 2, `md` = 3, `lg` = 5 lines) or an explicit `lines={n}` count
+  - Body lines get a naturally ragged width and the last line is shortened, like real text
+  - `align` (`left` / `center` / `right`), inherited from the component's `textAlign` when omitted
+  - `mode="words"` splits each line into word-sized bones separated by gaps
+  - Works on web and React Native (iOS / Android); all widths are deterministic (no flicker)
+
+## 1.0.2
+
+### Patch Changes
+
+- 0d910c8: Fix cascade on web: bones now animate sequentially top to bottom with a staggered per-bone delay (bone.y times cascade ms), matching native behavior. Previously the web build only faded bones in progressively instead of staggering their animation start.
+
+## 1.1.0
+
+### Minor Changes
+
+- Add shaker animation, SkeletonBox, and SkeletonIgnore.
+
+  **shaker**: a rapid horizontal vibration burst followed by a long rest - like a nervous tremor. The shake occupies the first ~20% of the cycle; the remaining ~80% is a stationary hold. Works on web (CSS keyframes) and React Native (Animated API).
+
+  **SkeletonBox**: wraps containers that are visually meaningful shapes (stat cards, chips, badges). The box itself renders as a semi-transparent bone (opacity 0.25, always static) with its children bones on top. Pass `static` to suppress animation on the box bone. Web uses `data-testid="__skl_box__"`, React Native uses `testID="__skl_box__"`.
+
+  **SkeletonIgnore**: wraps elements that should never receive a skeleton bone and always remain visible during loading - section headers, timestamps, decorative labels. The measurement layer skips the element and all its descendants entirely. Web uses `data-testid="__skl_ignore__"`, React Native uses `testID="__skl_ignore__"`.
+
+  Both components are exported from the main entry point (`react-zero-skeleton`) on web and the native entry point (`react-zero-skeleton/native`) on React Native.
+
 ## 0.9.0
 
 ### Minor Changes

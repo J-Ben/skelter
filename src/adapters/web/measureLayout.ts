@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import type { RefObject } from 'react';
 import { generateBones } from '../../core/generateBones';
+import { parseParagraph, normalizeTextAlign } from '../../core/constants';
 import type { BoneTree, ElementType, Bone } from '../../core/types';
 
 /**
@@ -48,20 +49,37 @@ function readBorderRadius(element: Element): number {
 
 function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
     const rect = element.getBoundingClientRect();
+    const testid = element.getAttribute('data-testid');
+    const paragraph = parseParagraph(testid);
+    const paragraphLines = paragraph?.lines;
+    // Explicit align wins; otherwise inherit the computed textAlign.
+    const paragraphAlign = paragraphLines !== undefined
+        ? paragraph?.align ?? normalizeTextAlign(window.getComputedStyle(element).textAlign)
+        : undefined;
 
     const layout = {
         x: rect.left - rootRect.left,
         y: rect.top - rootRect.top,
         width: rect.width,
         height: rect.height,
-        type: detectElementType(element),
+        // Paragraph wrappers are split into text lines, so type them as text.
+        type: paragraphLines !== undefined ? ('text' as ElementType) : detectElementType(element),
         borderRadius: readBorderRadius(element),
+        isSkeletonBox: testid === '__skl_box__' || testid === '__skl_box_static__',
+        isSkeletonBoxStatic: testid === '__skl_box_static__',
+        isSkeletonIgnore: testid === '__skl_ignore__',
+        paragraphLines,
+        paragraphAlign,
+        paragraphWords: paragraph?.words,
     };
 
+    // Paragraph wrapper: collected as one block, inner text must not add bones.
     const children: BoneTree[] = [];
-    for (const child of Array.from(element.children)) {
-        if (child instanceof HTMLElement) {
-            children.push(buildBoneTree(child, rootRect));
+    if (paragraphLines === undefined) {
+        for (const child of Array.from(element.children)) {
+            if (child instanceof HTMLElement) {
+                children.push(buildBoneTree(child, rootRect));
+            }
         }
     }
 
@@ -106,8 +124,13 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
 
         observer.observe(rootRef.current);
 
+        // Retry on next frame: initial ResizeObserver callback may fire before
+        // the scroll container has committed layout for off-screen items.
+        const frameId = requestAnimationFrame(() => measure());
+
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(frameId);
         };
     }, [measure]);
 

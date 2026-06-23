@@ -14,7 +14,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "jsx": "react-native",
-    "types": ["node"]
+    "types": ["node", "jest"],
+    "paths": {
+      "react-zero-skeleton": ["./src/index.ts"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "example"]

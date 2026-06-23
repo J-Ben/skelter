@@ -41,6 +41,39 @@ export default defineConfig([
   },
 
   /**
+   * DevTools bundle — web
+   */
+  {
+    entry: { index: 'src/devtools/index.ts' },
+    format: ['cjs', 'esm'],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    treeshake: true,
+    splitting: false,
+    external: ['react', 'react-native', 'react-zero-skeleton', 'react/compiler-runtime'],
+    outDir: 'dist/devtools',
+    banner: { js: '/* skelter devtools : dev only */' },
+  },
+
+  /**
+   * DevTools bundle — React Native (Metro resolves via "react-native" export condition)
+   */
+  {
+    entry: { index: 'src/devtools/index.native.ts' },
+    format: ['cjs', 'esm'],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    treeshake: true,
+    splitting: false,
+    platform: 'node',
+    external: ['react', 'react-native', 'react-zero-skeleton', 'react/compiler-runtime', 'react-native-svg'],
+    outDir: 'dist/devtools/native',
+    banner: { js: '/* skelter devtools native : dev only */' },
+  },
+
+  /**
    * React Native bundle
    * Consumers: Expo, bare React Native projects
    * Resolved via "react-native" field in package.json exports

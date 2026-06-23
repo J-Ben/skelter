@@ -18,6 +18,15 @@ function detectElementType(displayName?: string): ElementType {
 
 // ─── Result shape (shared by both hooks) ────────────────────────────────────
 
+export interface ScoringRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Estimated rendered text width. Only set for text leaves. When set, use this for coverage width instead of w. */
+  textW?: number;
+}
+
 export interface MeasureLayoutResult {
   /** The root BoneTree node, null until layout is captured */
   boneTree: BoneTree | null;
@@ -35,6 +44,13 @@ export interface MeasureLayoutResult {
    * withSkeleton passes this to the invisible container View.
    */
   warmupRef: React.RefObject<unknown>;
+  /**
+   * Real fiber-walk leaf rects for devtools scoring.
+   * Populated during onRootLayout (warmup still mounted) so we avoid
+   * UIManager.measure errors on already-unmounted Views.
+   * Empty until layout is captured.
+   */
+  scoringLeaves: ScoringRect[];
 }
 
 // ─── root-only (v0.2 compat) ─────────────────────────────────────────────────
@@ -45,7 +61,30 @@ interface MeasureNode {
   children: MeasureNode[];
 }
 
-function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
+function measureRootPageXY(
+  instance: unknown,
+  cb: (pageX: number, pageY: number) => void,
+) {
+  const nativeTag = (instance as Record<string, unknown>).__nativeTag as number | undefined;
+  if (nativeTag != null && nativeTag > 0) {
+    try {
+      UIManager.measure(nativeTag, (_x, _y, _w, _h, pageX, pageY) => cb(pageX, pageY));
+      return;
+    } catch { /* fall through */ }
+  }
+  if (typeof (instance as { measure?: unknown }).measure === 'function') {
+    (instance as { measure: (cb: (x: number, y: number, w: number, h: number, px: number, py: number) => void) => void })
+      .measure((_x, _y, _w, _h, pageX, pageY) => cb(pageX, pageY));
+  } else {
+    cb(0, 0);
+  }
+}
+
+function buildRootOnlyHook(
+  boneStyle?: BoneStyleOverride,
+  maxDepth = 20,
+  exclude: string[] = [],
+): MeasureLayoutResult {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rootLayoutRef = useRef<MeasuredLayout | null>(null);
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -54,6 +93,8 @@ function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
   const boneTreeRef = useRef<BoneTree | null>(null);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isLayoutCapturedRef = useRef(false);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const scoringLeavesRef = useRef<ScoringRect[]>([]);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -104,9 +145,28 @@ function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
       const { x, y, width, height } = event.nativeEvent.layout;
       if (width === 0 || height === 0) return;
       rootLayoutRef.current = { x, y, width, height, type: 'view' };
+
+      // Run fiber walk for scoring WHILE the warmup View is still mounted.
+      const instance = warmupRef.current;
+      if (instance) {
+        measureRootPageXY(instance, (rootPageX, rootPageY) => {
+          measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth, exclude })
+            .then(layouts => {
+              if (layouts && layouts.length > 0) {
+                scoringLeavesRef.current = layouts.map(l => ({
+                  x: l.x, y: l.y, w: l.width, h: l.height,
+                  textW: l.textContentWidth !== undefined ? Math.min(l.textContentWidth, l.width) : undefined,
+                }));
+                forceUpdate();
+              }
+            })
+            .catch(() => {});
+        });
+      }
+
       rebuildTree();
     },
-    [rebuildTree]
+    [rebuildTree, maxDepth, exclude]
   );
 
   const createChildLayoutHandler = useCallback(
@@ -131,7 +191,47 @@ function buildRootOnlyHook(boneStyle?: BoneStyleOverride): MeasureLayoutResult {
     createChildLayoutHandler,
     isLayoutCaptured: isLayoutCapturedRef.current,
     warmupRef,
+    scoringLeaves: scoringLeavesRef.current,
   };
+}
+
+// ─── SkeletonBox nesting ──────────────────────────────────────────────────────
+
+/**
+ * Builds a nested BoneTree from a flat list of MeasuredLayouts.
+ * SkeletonBox nodes become parents of any layout whose bounds fall
+ * entirely within theirs (geometric containment). All other layouts
+ * stay as root-level children.
+ */
+function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
+  const boxes = layouts.filter(l => l.isSkeletonBox);
+  const leaves = layouts.filter(l => !l.isSkeletonBox);
+
+  if (boxes.length === 0) {
+    return leaves.map(l => ({ layout: l, children: [] }));
+  }
+
+  const boxChildren = new Map<MeasuredLayout, BoneTree[]>(boxes.map(b => [b, []]));
+  const rootChildren: BoneTree[] = [];
+
+  for (const l of leaves) {
+    const parent = boxes.find(
+      b => l.x >= b.x && l.y >= b.y &&
+           l.x + l.width <= b.x + b.width &&
+           l.y + l.height <= b.y + b.height
+    );
+    if (parent) {
+      boxChildren.get(parent)!.push({ layout: l, children: [] });
+    } else {
+      rootChildren.push({ layout: l, children: [] });
+    }
+  }
+
+  for (const b of boxes) {
+    rootChildren.push({ layout: b, children: boxChildren.get(b)! });
+  }
+
+  return rootChildren;
 }
 
 // ─── auto (v0.3 default) ──────────────────────────────────────────────────────
@@ -147,6 +247,8 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const boneTreeRef = useRef<BoneTree | null>(null);
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const scoringLeavesRef = useRef<ScoringRect[]>([]);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [isLayoutCaptured, setIsLayoutCaptured] = useState(false);
 
   const onRootLayout = useCallback(
@@ -161,28 +263,7 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
       // Prefer UIManager.measure(nativeTag) to match the same coordinate system
       // used for child measurements — mixing Fabric fabricMeasure and UIManager
       // on the same device can produce a systematic offset.
-      const measureRoot = (cb: (pageX: number, pageY: number) => void) => {
-        const nativeTag = (instance as Record<string, unknown>).__nativeTag as number | undefined;
-        if (nativeTag != null && nativeTag > 0) {
-          try {
-            UIManager.measure(nativeTag, (_x: number, _y: number, _w: number, _h: number, pageX: number, pageY: number) => {
-              cb(pageX, pageY);
-            });
-            return;
-          } catch {
-            // fall through
-          }
-        }
-        if (typeof (instance as { measure?: unknown }).measure === 'function') {
-          (instance as { measure: (cb: (x: number, y: number, w: number, h: number, px: number, py: number) => void) => void }).measure(
-            (_x, _y, _w, _h, pageX, pageY) => cb(pageX, pageY)
-          );
-        } else {
-          cb(0, 0);
-        }
-      };
-
-      measureRoot((rootPageX, rootPageY) => {
+      measureRootPageXY(instance, (rootPageX, rootPageY) => {
         measureFiberLeaves(instance, rootPageX, rootPageY, options)
           .then(layouts => {
             if (!layouts || layouts.length === 0) {
@@ -197,10 +278,12 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
                 children: [],
               };
             } else {
-              // One BoneTree child per leaf element, no nesting needed
+              scoringLeavesRef.current = layouts.map(l => ({
+                x: l.x, y: l.y, w: l.width, h: l.height,
+              }));
               boneTreeRef.current = {
                 layout: { x: 0, y: 0, width, height, type: 'view' },
-                children: layouts.map(l => ({ layout: l, children: [] })),
+                children: nestLayouts(layouts),
               };
             }
             setIsLayoutCaptured(true);
@@ -231,6 +314,7 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
     createChildLayoutHandler,
     isLayoutCaptured,
     warmupRef,
+    scoringLeaves: scoringLeavesRef.current,
   };
 }
 
@@ -248,6 +332,7 @@ export interface UseMeasureLayoutOptions {
  *
  * 'root-only' strategy: uses onLayout on the warmup wrapper : v0.2 behaviour,
  *   produces a single bone the size of the component root.
+ *   Also runs a dev-time fiber walk to populate scoringLeaves for devtools.
  *
  * 'auto' strategy: after the warmup render's onLayout fires, walks the React
  *   Fiber tree and measures each native leaf element individually via
@@ -262,7 +347,7 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
     return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return buildRootOnlyHook(opts.boneStyle);
+  return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude);
 }
 
 export { detectElementType };
