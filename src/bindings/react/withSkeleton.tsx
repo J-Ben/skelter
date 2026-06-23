@@ -94,6 +94,7 @@ function InspectionOverlay({ bones, containerW, containerH, contentRects }: {
   const emptyMode = hovered === 'empty';
 
   return (
+    <>
     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 500 }}>
       {/* Yellow = uncovered areas. Full opacity in empty mode so gaps are clearly visible. */}
       <div style={{
@@ -176,30 +177,18 @@ function InspectionOverlay({ bones, containerW, containerH, contentRects }: {
         }} />
       </div>
 
-      {/* Tooltip hint when hovering */}
-      {hovered && (
-        <div style={{
-          position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(9,9,11,0.92)', color: '#e4e4e7',
-          fontFamily: 'monospace', fontSize: 9, padding: '3px 8px', borderRadius: 6,
-          whiteSpace: 'nowrap', pointerEvents: 'none',
-        }}>
-          {DIM_HINTS[hovered]}
-          {hovered !== 'empty' && countByDim[hovered] === 0 && (
-            <span style={{ color: '#22c55e', marginLeft: 6 }}>✓ aucun</span>
-          )}
-          {hovered !== 'empty' && countByDim[hovered] > 0 && (
-            <span style={{ color: hovered === 'overflow' ? '#ef4444' : '#f97316', marginLeft: 6 }}>
-              {countByDim[hovered]} bone{countByDim[hovered] > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      )}
+    </div>
 
-      {/* Legend */}
+    {/* Legend + tooltip — anchored below the real component (sibling of the overlay box,
+        so top:100% resolves against the outer wrapper's actual rendered height, not the
+        skeleton's estimated containerH). Stacked in a column so the tooltip always sits
+        under the legend regardless of how many rows it wraps to. */}
+    <div style={{
+      position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 500,
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4,
+    }}>
       <div style={{
-        position: 'absolute', bottom: 4, right: 4,
-        display: 'flex', gap: 3, pointerEvents: 'all',
+        display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end', pointerEvents: 'all',
       }}>
         {LEGEND_ITEMS.map(({ dim, label, bg }) => {
           const count = dim !== 'empty' && dim !== null ? countByDim[dim as keyof typeof countByDim] : null;
@@ -209,9 +198,9 @@ function InspectionOverlay({ bones, containerW, containerH, contentRects }: {
               onMouseEnter={() => setHovered(dim)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                fontFamily: 'monospace', fontSize: 8, fontWeight: 700,
+                fontFamily: 'monospace', fontSize: 8, fontWeight: 700, lineHeight: '11px',
                 background: hovered === dim ? bg.replace('0.85', '1') : bg,
-                color: '#fff', padding: '1px 5px', borderRadius: 4,
+                color: '#fff', padding: '0px 5px', borderRadius: 4,
                 cursor: 'default',
                 outline: hovered === dim ? '1.5px solid rgba(255,255,255,0.6)' : 'none',
                 transition: 'outline 0.1s',
@@ -223,7 +212,26 @@ function InspectionOverlay({ bones, containerW, containerH, contentRects }: {
           );
         })}
       </div>
+
+      {hovered && (
+        <div style={{
+          background: 'rgba(9,9,11,0.92)', color: '#e4e4e7',
+          fontFamily: 'monospace', fontSize: 9, padding: '3px 8px', borderRadius: 6,
+          whiteSpace: 'nowrap', pointerEvents: 'none',
+        }}>
+          {DIM_HINTS[hovered]}
+          {hovered !== 'empty' && countByDim[hovered] === 0 && (
+            <span style={{ color: '#22c55e', marginLeft: 6 }}>✓ négligeable</span>
+          )}
+          {hovered !== 'empty' && countByDim[hovered] > 0 && (
+            <span style={{ color: hovered === 'overflow' ? '#ef4444' : '#f97316', marginLeft: 6 }}>
+              {countByDim[hovered]} bone{countByDim[hovered] > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
     </div>
+    </>
   );
 }
 type EnterPhase = 'entering' | 'visible';
@@ -595,6 +603,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const id = useId();
   const isLoading = devTools.enabled && (devTools.forceLoading || devTools.forcedIds.has(id)) ? true : isLoadingProp;
   const xray = devTools.enabled && devTools.xray;
+  const showWaste = devTools.enabled && devTools.showWaste;
 
   const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout();
 
@@ -788,7 +797,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
     const total = Math.round(fidelity * 0.5 + waste * 0.25 + coverage * 0.15 + stability * 0.1);
     setMatchScore(id, { total, fidelity, waste, coverage, stability, missedElements, ghostBones });
-  }, [dtEnabled, isLayoutCaptured, structuralBones, id, setMatchScore, contentRef]);
+  }, [dtEnabled, isLoading, isLayoutCaptured, structuralBoneCount, id, setMatchScore, contentRef]);
 
   const isInspected = devTools.enabled && devTools.inspectedId === id;
   const isHighlight = devTools.enabled && devTools.highlight;
@@ -818,9 +827,10 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
         <Component {...(mockProps && isLoading ? { ...componentProps, ...mockProps } as P : componentProps as P)} />
       </div>
 
-      {/* Skeleton overlay (xray, loading, or per-component inspect) */}
-      {(showOverlay || xray || isInspectedForOverlay) && (
-        <div style={{ ...overlayStyle, ...((xray || isInspectedForOverlay) ? { opacity: devTools.enabled && (devTools.forceLoading || isForced) ? 0.8 : 0.5 } : {}) }} aria-hidden="true" role="presentation">
+      {/* Skeleton overlay (xray or loading). Hidden while the richer per-component
+          inspection overlay (below) is open for this card, to avoid stacking both. */}
+      {(showOverlay || xray) && !isInspectedForOverlay && (
+        <div style={{ ...overlayStyle, ...(xray ? { opacity: devTools.enabled && (devTools.forceLoading || isForced) ? 0.8 : 0.5 } : {}) }} aria-hidden="true" role="presentation">
           {displayBones.map((bone, index) => (
             <SkeletonBone key={`bone-${index}`} bone={bone} config={mergedConfig} />
           ))}
@@ -851,6 +861,36 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
       {isInspected && isLayoutCaptured && cachedBones.length > 0 && (
         <InspectionOverlay bones={cachedBones} containerW={containerW} containerH={containerH} contentRects={contentRectsRef.current} />
       )}
+
+      {/* Waste overlay (global toggle): red = wasted bone area, green = bone area covering real rendered content. */}
+      {showWaste && isLayoutCaptured && contentRectsRef.current.length > 0 && (() => {
+        const wasteBones = cachedBones.filter(b => !b.isParagraph && !b.isStatic);
+        if (wasteBones.length === 0) return null;
+        const elems = contentRectsRef.current;
+        return (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
+            {wasteBones.map((bone, bIdx) => (
+              <React.Fragment key={`waste-${bIdx}`}>
+                <div style={{
+                  position: 'absolute', left: bone.x, top: bone.y, width: bone.width, height: bone.height,
+                  background: 'rgba(239,68,68,0.4)', borderRadius: bone.borderRadius ?? 0,
+                }} />
+                {elems.map((e, eIdx) => {
+                  const x = Math.max(bone.x, e.x), y = Math.max(bone.y, e.y);
+                  const r = Math.min(bone.x + bone.width, e.x + e.vw), b = Math.min(bone.y + bone.height, e.y + e.vh);
+                  if (r <= x || b <= y) return null;
+                  return (
+                    <div key={`cov-${bIdx}-${eIdx}`} style={{
+                      position: 'absolute', left: x, top: y, width: r - x, height: b - y,
+                      background: 'rgba(34,197,94,0.55)',
+                    }} />
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Floating controls: score badge + play/stop */}
       {isHighlight && isLayoutCaptured && (

@@ -61,7 +61,7 @@ type DockSide = 'float' | 'left' | 'right';
 
 /* ─── Panel ───────────────────────────────────────────────── */
 function Panel({
-  open, forceLoading, setForceLoading, xray, setXray,
+  open, forceLoading, setForceLoading, xray, setXray, showWaste, setShowWaste,
   highlight, setHighlight, inspectedId, setInspectedId,
   hoveredId, setHoveredId, components, forcedIds, setForcedId, matchScores,
   btnX, btnY, theme, setTheme, dock, setDock,
@@ -69,6 +69,7 @@ function Panel({
   open: boolean;
   forceLoading: boolean; setForceLoading: (v: boolean) => void;
   xray: boolean; setXray: (v: boolean) => void;
+  showWaste: boolean; setShowWaste: (v: boolean) => void;
   highlight: boolean; setHighlight: (v: boolean) => void;
   inspectedId: string | null; setInspectedId: (id: string | null) => void;
   hoveredId: string | null; setHoveredId: (id: string | null) => void;
@@ -87,14 +88,13 @@ function Panel({
     if (hoveredId) setExpanded(hoveredId);
   }, [hoveredId]);
 
-  if (!open && !isDocked) return null;
   if (isDocked && !open) return null;
   const list = Array.from(components.entries());
   const panelW = isDocked ? 300 : 290;
 
   const isDark = theme === 'dark';
   const T = {
-    bg: isDark ? 'rgba(12,12,14,0.92)' : 'rgba(250,250,252,0.92)',
+    bg: isDark ? 'rgba(12,12,14,0.78)' : 'rgba(250,250,252,0.78)',
     text: isDark ? '#a1a1aa' : '#52525b',
     title: isDark ? '#f4f4f5' : '#18181b',
     border: isDark ? '#1f1f23' : '#e4e4e7',
@@ -123,11 +123,18 @@ function Panel({
     transform: 'none',
   } : {};
 
-  // Float: panel above button
+  // Float: panel above button, pops open/closed from/to the button itself
   const left = Math.min(btnX, window.innerWidth - panelW - 8);
   const floatStyle = !isDocked ? {
     position: 'fixed' as const,
-    left, top: btnY - 8, transform: 'translateY(-100%)',
+    left, top: btnY - 8,
+    transform: `translateY(-100%) scale(${open ? 1 : 0.15})`,
+    transformOrigin: 'bottom left',
+    opacity: open ? 1 : 0,
+    transition: open
+      ? 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease'
+      : 'transform 0.18s ease, opacity 0.18s ease',
+    pointerEvents: open ? 'auto' as const : 'none' as const,
     maxHeight: '70vh', borderRadius: 16,
   } : {};
 
@@ -178,6 +185,11 @@ function Panel({
             background: xray ? '#6366f1' : T.btn, color: xray ? '#fff' : T.btnText,
             border: 'none', fontFamily: 'monospace', fontWeight: 600,
           }}>{xray ? '✕ x-ray' : '⊡ x-ray'}</button>
+          <button onClick={() => setShowWaste(!showWaste)} style={{
+            flex: 1, fontSize: 10, padding: '6px 4px', borderRadius: 8, cursor: 'pointer',
+            background: showWaste ? '#ef4444' : T.btn, color: showWaste ? '#fff' : T.btnText,
+            border: 'none', fontFamily: 'monospace', fontWeight: 600,
+          }}>{showWaste ? '✕ waste' : '◧ waste'}</button>
           <button onClick={() => { setHighlight(!highlight); if (highlight) setInspectedId(null); }} style={{
             flex: 1, fontSize: 10, padding: '6px 4px', borderRadius: 8, cursor: 'pointer',
             background: highlight ? '#0ea5e9' : T.btn, color: highlight ? '#fff' : T.btnText,
@@ -225,11 +237,6 @@ function Panel({
                         onClick={() => { setExpanded(isExpanded ? null : id); setInspectedId(isInspectedItem ? null : id); }}
                       >{score.total}% {isExpanded ? '▲' : '▼'}</span>
                     )}
-                    <span onClick={() => setForcedId(id, !isForced)} style={{
-                      fontSize: 9, lineHeight: 1, padding: '2px 6px', borderRadius: 20, cursor: 'pointer',
-                      display: 'inline-flex', alignItems: 'center',
-                      background: isForced ? '#f97316' : T.btn, color: isForced ? '#fff' : T.btnText,
-                    }}>{isForced ? '⏹' : '▶'}</span>
                   </div>
                 </div>
                 <div style={{ padding: '2px 7px 4px', background: T.row, borderRadius: isExpanded ? 0 : '0 0 8px 8px', color: T.text, display: 'flex', gap: 8 }}>
@@ -282,8 +289,19 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
   const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [panelMounted, setPanelMounted] = useState(false);
+  const [pressed, setPressed] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [dock, setDock] = useState<DockSide>('float');
+
+  useEffect(() => {
+    if (open) {
+      setPanelMounted(true);
+    } else if (panelMounted) {
+      const t = setTimeout(() => setPanelMounted(false), 200);
+      return () => clearTimeout(t);
+    }
+  }, [open, panelMounted]);
 
   // Push page content when docked — body margin so the page isn't hidden behind the panel
   useEffect(() => {
@@ -339,6 +357,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
     dragging.current = true;
     hasMoved.current = false;
     dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    setPressed(true);
     e.preventDefault();
   }, [pos]);
 
@@ -350,7 +369,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
       const y = Math.min(Math.max(0, e.clientY - dragOffset.current.y), window.innerHeight - BTN_SIZE);
       setPos({ x, y });
     };
-    const onUp = () => { dragging.current = false; };
+    const onUp = () => { dragging.current = false; setPressed(false); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => {
@@ -396,7 +415,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
     components: componentsRef.current,
     registerComponent,
     unregisterComponent,
-  }), [tick, forceLoading, xray, highlight, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
+  }), [tick, forceLoading, xray, highlight, showWaste, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
 
   const count = componentsRef.current.size;
   const allScores = Array.from(matchScoresRef.current.values()).map(s => s.total);
@@ -410,12 +429,14 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
     : throwPhase === 'arc' ? 1.2
     : throwPhase === 'land' ? 0.85
     : throwPhase === 'bounce' ? 1.05
+    : pressed ? 0.85
     : 1;
   const btnTransition = throwPhase === 'center' ? 'opacity 0.3s ease, transform 0.3s ease'
     : throwPhase === 'arc' ? 'left 0.28s cubic-bezier(0.4,0,0.6,1), top 0.28s cubic-bezier(0.4,0,0.6,1), transform 0.28s ease'
     : throwPhase === 'land' ? 'left 0.25s cubic-bezier(0.2,0.8,0.4,1), top 0.25s cubic-bezier(0.2,0.8,0.4,1), transform 0.2s ease'
     : throwPhase === 'bounce' ? 'all 0.2s cubic-bezier(0.34,1.6,0.64,1)'
-    : 'none';
+    : pressed ? 'transform 0.1s ease'
+    : 'left 0.05s, top 0.05s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
 
   return (
     <DevToolsContext.Provider value={ctx}>
@@ -452,10 +473,11 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
         )}
       </button>
 
-      <Panel
+      {(panelMounted || dock !== 'float') && <Panel
         open={open}
         forceLoading={forceLoading} setForceLoading={setForceLoading}
         xray={xray} setXray={setXray}
+        showWaste={showWaste} setShowWaste={setShowWaste}
         highlight={highlight} setHighlight={setHighlight}
         inspectedId={inspectedId} setInspectedId={setInspectedId}
         hoveredId={hoveredId} setHoveredId={setHoveredId}
@@ -466,7 +488,7 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
         btnX={pos.x} btnY={pos.y}
         theme={theme} setTheme={setTheme}
         dock={dock} setDock={setDock}
-      />
+      />}
     </DevToolsContext.Provider>
   );
 }

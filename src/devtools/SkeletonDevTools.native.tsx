@@ -326,7 +326,6 @@ function Panel({
           <Text style={[s.empty, { color: T.titleLabel }]}>No components mounted.</Text>
         ) : (
           list.map(([id, info]) => {
-            const isForced = forcedIds.has(id);
             const score = matchScores.get(id);
             const isExpanded = expanded === id;
             const isInspected = inspectedId === id;
@@ -346,9 +345,6 @@ function Panel({
                         <Icon name={isExpanded ? 'chevronUp' : 'chevronDown'} size={9} color="#fff" />
                       </Pressable>
                     )}
-                    <Pressable style={[s.forceBadge, { backgroundColor: T.forceBadge }, isForced && s.forceBadgeActive]} onPress={() => setForcedId(id, !isForced)}>
-                      <Icon name={isForced ? 'stop' : 'play'} size={9} color={isForced ? '#fff' : T.forceBadgeText} />
-                    </Pressable>
                   </View>
                 </View>
                 <View style={s.rowMeta}>
