@@ -74,6 +74,10 @@ function Panel({
   inspectedId: string | null; setInspectedId: (id: string | null) => void;
   hoveredId: string | null; setHoveredId: (id: string | null) => void;
   components: Map<string, ComponentInfo>;
+  // Per-component force toggle: still plumbed through context/withSkeleton, but its
+  // UI button was removed (caused panel reordering and failed to trigger loading on
+  // the targeted instance — root cause not yet identified). Kept for isForced styling
+  // and to avoid a wider context/binding rework until the toggle is reintroduced.
   forcedIds: Set<string>;
   setForcedId: (id: string, forced: boolean) => void;
   theme: 'dark' | 'light'; setTheme: (t: 'dark' | 'light') => void;
