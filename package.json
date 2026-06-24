@@ -86,5 +86,10 @@
     "ts-jest": "^29.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "human-id": "4.1.3"
+    }
   }
 }
