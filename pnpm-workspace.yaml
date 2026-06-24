@@ -1,0 +1,11 @@
+packages:
+  - .
+
+allowBuilds:
+  esbuild: set this to true or false
+
+overrides:
+  # @changesets/write requires('human-id') CommonJS-style; human-id@4.2.0 is
+  # ESM-only ("type": "module"), which crashes the Release workflow on Node 18
+  # with ERR_REQUIRE_ESM. Pin to the last CJS-compatible release.
+  human-id: '4.1.3'
