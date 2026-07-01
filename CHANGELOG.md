@@ -5,6 +5,9 @@
 ### Major Changes
 
 - 504a74f: Add SkeletonDevTools: a floating in-app panel to inspect skeleton match quality (fidelity/waste/coverage/stability), force-load all components at once, x-ray any component from the panel, and toggle a waste overlay. Available via `react-zero-skeleton/devtools` for both web and React Native.
+- Add `useSkeleton` hook: Core hook for skeleton state management. Provides `isSkeletonVisible` and `bones` to custom components, enabling granular control over skeleton behavior and timing.
+- Add exit animations: New `exit` prop on `SkeletonTheme` and `skeletonConfig` supports `fadeUp`, `fadeDown`, `fadeLeft`, `fadeRight`, and `none`. Configurable exit timing and animation style.
+- Add `revealOnExit`: When enabled, real content becomes visible underneath the skeleton while the exit animation plays, creating a seamless transition effect.
 
 ## 1.2.1
 

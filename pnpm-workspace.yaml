@@ -2,7 +2,7 @@ packages:
   - .
 
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: false
 
 overrides:
   # @changesets/write requires('human-id') CommonJS-style; human-id@4.2.0 is
