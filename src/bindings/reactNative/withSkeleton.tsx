@@ -217,6 +217,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     boneTree,
   });
 
+  // Exit animation state (moved here so it's accessible for displayBones calculation).
+  const [isExiting, setIsExiting] = useState(false);
+
   // Cache last non-empty bones so x-ray can show them even after loading ends.
   const lastBonesRef = useRef(bones);
   if (bones.length > 0) lastBonesRef.current = bones;
@@ -226,7 +229,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // generating them straight from the measured boneTree.
   const structuralBones = boneTree ? generateBones(boneTree) : [];
   const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
-  const displayBones = (xray || isInspected) ? cachedBones : bones;
+  const displayBones = (xray || isInspected || isExiting) ? cachedBones : bones;
 
   // Real content ref + real leaves for waste overlay (measured from actual rendered content, not mock).
   const realContentRef = useRef<View | null>(null);
@@ -339,12 +342,87 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // Single Animated.Value shared across all non-shatter bones.
   const animatedValue = useRef(new Animated.Value(0)).current;
 
+  // Enter animation: fade in skeleton when it first becomes visible.
+  const enterOpacityRef = useRef(new Animated.Value(0)).current;
+
+  // Exit animation: fade + translate bones when loading → loaded transition.
+  const exitOpacityRef = useRef(new Animated.Value(1)).current;
+  const exitTranslateYRef = useRef(new Animated.Value(0)).current;
+  const exitTranslateXRef = useRef(new Animated.Value(0)).current;
+
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => sub.remove();
   }, []);
+
+  // Enter fade: animate opacity 0→1 when skeleton becomes visible.
+  useEffect(() => {
+    if (isSkeletonVisible && !reduceMotion) {
+      enterOpacityRef.setValue(0);
+      Animated.timing(enterOpacityRef, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      enterOpacityRef.setValue(1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSkeletonVisible]);
+
+  // Track if skeleton was visible AND trigger exit animation on transition.
+  const wasSkeletonVisibleRef = useRef(false);
+
+  useEffect(() => {
+    const wasVisible = wasSkeletonVisibleRef.current;
+    const isNowVisible = isSkeletonVisible;
+
+    // Transition from visible → hidden: trigger exit animation.
+    if (wasVisible && !isNowVisible && !isExiting) {
+      console.log('[EXIT-TRIGGERED-DIRECT]', { exitType: mergedConfig.exit, reduceMotion });
+      const exitType = mergedConfig.exit;
+      const shouldAnimateExit = exitType !== 'none' && !reduceMotion;
+
+      if (shouldAnimateExit) {
+        setIsExiting(true);
+
+        // Calculate target transform values based on exit type.
+        let targetY = 0, targetX = 0;
+        if (exitType === 'fadeUp') targetY = -20;
+        else if (exitType === 'fadeDown') targetY = 20;
+        else if (exitType === 'fadeLeft') targetX = -20;
+        else if (exitType === 'fadeRight') targetX = 20;
+
+        // Run opacity + translate animations in parallel.
+        Animated.parallel([
+          Animated.timing(exitOpacityRef, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(exitTranslateYRef, {
+            toValue: targetY,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(exitTranslateXRef, {
+            toValue: targetX,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setIsExiting(false);
+          exitOpacityRef.setValue(1);
+          exitTranslateYRef.setValue(0);
+          exitTranslateXRef.setValue(0);
+        });
+      }
+    }
+
+    wasSkeletonVisibleRef.current = isNowVisible;
+  }, [isSkeletonVisible, mergedConfig.exit, reduceMotion, isExiting, exitOpacityRef, exitTranslateYRef, exitTranslateXRef]);
 
   // Single animation loop : drives all bones from this component.
   useEffect(() => {
@@ -399,7 +477,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     return () => anim.stop();
   }, [isSkeletonVisible, xray, reduceMotion, mergedConfig.animation, mergedConfig.speed, animatedValue]);
 
-  const showBones = isLayoutCaptured && !!boneTree && visibleBones.length > 0;
+  const showBones = isLayoutCaptured && !!boneTree && (visibleBones.length > 0 || isExiting);
   const showXrayOverlay = (xray || isInspected) && isLayoutCaptured && !!boneTree && visibleBones.length > 0;
 
   const bonesLayer = showBones ? (
@@ -424,7 +502,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   ) : null;
 
   return (
-    <View>
+    <View style={isExiting && boneTree ? { height: boneTree.layout.height, overflow: 'hidden' } : undefined}>
       {!isSSR && !isLayoutCaptured && (
         <View
           ref={warmupRef as React.RefObject<View>}
@@ -437,14 +515,30 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       )}
 
       {/* Normal skeleton mode: bones replace content, take up natural space */}
-      {isSkeletonVisible && bonesLayer}
-
-      {/* X-ray mode: content + bones overlay simultaneously */}
-      {(!isSkeletonVisible || isSSR) && (
-        <View ref={realContentRef} collapsable={false}>
-          <Component {...componentProps} />
-        </View>
+      {(isSkeletonVisible || isExiting) && (
+        <Animated.View
+          style={{
+            ...(isExiting ? { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 } : {}),
+            opacity: isExiting ? exitOpacityRef : enterOpacityRef,
+            transform: isExiting ? [
+              { translateY: exitTranslateYRef },
+              { translateX: exitTranslateXRef },
+            ] : undefined,
+          }}
+        >
+          {bonesLayer}
+        </Animated.View>
       )}
+
+      {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts. Visible after. */}
+      <View
+        ref={realContentRef}
+        collapsable={false}
+        style={isSkeletonVisible && !isExiting ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 } : undefined}
+        pointerEvents={isSkeletonVisible && !isExiting ? 'none' : 'auto'}
+      >
+        <Component {...componentProps} />
+      </View>
       {showXrayOverlay && (
         <View
           style={{ position: 'absolute', top: 0, left: 0, opacity: isSkeletonVisible ? 0.85 : 0.5 }}
