@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { DevToolsContext, type ComponentInfo, type MatchScore } from '../context/DevToolsContext';
+import { DevToolsContext, type ComponentInfo, type MatchScore, type ScreenInfo } from '../context/DevToolsContext';
 
 const BTN_SIZE = 48;
 
@@ -64,6 +64,7 @@ function Panel({
   open, forceLoading, setForceLoading, xray, setXray, showWaste, setShowWaste,
   highlight, setHighlight, inspectedId, setInspectedId,
   hoveredId, setHoveredId, components, forcedIds, setForcedId, matchScores,
+  screens, activeScreenId, setActiveScreenId,
   btnX, btnY, theme, setTheme, dock, setDock,
 }: {
   open: boolean;
@@ -74,6 +75,9 @@ function Panel({
   inspectedId: string | null; setInspectedId: (id: string | null) => void;
   hoveredId: string | null; setHoveredId: (id: string | null) => void;
   components: Map<string, ComponentInfo>;
+  screens: Map<string, ScreenInfo>;
+  activeScreenId: string | null;
+  setActiveScreenId: (id: string | null) => void;
   // Per-component force toggle: still plumbed through context/withSkeleton, but its
   // UI button was removed (caused panel reordering and failed to trigger loading on
   // the targeted instance — root cause not yet identified). Kept for isForced styling
@@ -93,7 +97,16 @@ function Panel({
   }, [hoveredId]);
 
   if (isDocked && !open) return null;
-  const list = Array.from(components.entries());
+
+  // Filter components by active screen (null = show all)
+  const allEntries = Array.from(components.entries());
+  const list = activeScreenId
+    ? allEntries.filter(([, info]) => info.screenId === activeScreenId)
+    : allEntries;
+
+  const screenList = Array.from(screens.values()).sort((a, b) => b.mountedAt - a.mountedAt);
+  const hasScreens = screenList.length > 0;
+
   const panelW = isDocked ? 300 : 290;
 
   const isDark = theme === 'dark';
@@ -112,7 +125,7 @@ function Panel({
   };
 
   const scores = list.map(([id]) => matchScores.get(id)?.total).filter((s): s is number => s !== undefined);
-  const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   const scoreOn5 = avgScore !== null ? (avgScore / 100 * 5).toFixed(1) : null;
   const globalColor = avgScore !== null ? scoreColor(avgScore) : '#52525b';
 
@@ -202,12 +215,62 @@ function Panel({
         </div>
 
         <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 10 }} />
+
+        {/* Screen tabs — only shown when navigation is detected */}
+        {hasScreens && (
+          <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setActiveScreenId(null)}
+              style={{
+                fontSize: 9, padding: '3px 8px', borderRadius: 20, cursor: 'pointer', border: 'none',
+                fontFamily: 'monospace', fontWeight: 600,
+                background: activeScreenId === null ? '#f97316' : T.btn,
+                color: activeScreenId === null ? '#fff' : T.btnText,
+              }}
+            >all</button>
+            {screenList.map(s => {
+              const label = s.name || s.key.slice(0, 14);
+              const isActive = activeScreenId === s.key;
+              const screenScores = allEntries
+                .filter(([, info]) => info.screenId === s.key)
+                .map(([id]) => matchScores.get(id)?.total)
+                .filter((v): v is number => v !== undefined);
+              const avg = screenScores.length > 0
+                ? Math.round(screenScores.reduce((a, b) => a + b, 0) / screenScores.length)
+                : null;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setActiveScreenId(isActive ? null : s.key)}
+                  title={s.key}
+                  style={{
+                    fontSize: 9, padding: '3px 8px', borderRadius: 20, cursor: 'pointer', border: 'none',
+                    fontFamily: 'monospace', fontWeight: 600,
+                    background: isActive ? '#0ea5e9' : T.btn,
+                    color: isActive ? '#fff' : T.btnText,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  {label}
+                  {avg !== null && (
+                    <span style={{
+                      background: scoreColor(avg), color: '#fff',
+                      borderRadius: 20, padding: '0 4px', fontSize: 8, fontWeight: 700,
+                    }}>{avg}%</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Scrollable list */}
       <div style={{ overflowY: 'auto', padding: '0 10px 10px' }}>
         {list.length === 0 ? (
-          <p style={{ color: T.mutedScore, margin: 0 }}>No components mounted.</p>
+          <p style={{ color: T.mutedScore, margin: 0 }}>
+            {activeScreenId ? 'No components on this screen.' : 'No components mounted.'}
+          </p>
         ) : (
           list.map(([id, info]) => {
             const isForced = forcedIds.has(id);
@@ -331,6 +394,8 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
   const componentsRef = useRef<Map<string, ComponentInfo>>(new Map());
   const forcedIdsRef = useRef<Set<string>>(new Set());
   const matchScoresRef = useRef<Map<string, MatchScore>>(new Map());
+  const screensRef = useRef<Map<string, ScreenInfo>>(new Map());
+  const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
   const [tick, forceRender] = useState(0);
 
   // Throw animation on mount
@@ -384,12 +449,37 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
 
   const registerComponent = useCallback((id: string, info: ComponentInfo) => {
     componentsRef.current.set(id, info);
+    // Maintain screens map from component screenId
+    if (info.screenId) {
+      const existing = screensRef.current.get(info.screenId);
+      screensRef.current.set(info.screenId, {
+        key: info.screenId,
+        name: existing?.name ?? info.screenId,
+        mountedAt: Date.now(),
+      });
+      // Auto-switch to the most recently active screen
+      setActiveScreenId(info.screenId);
+    }
     forceRender(n => n + 1);
   }, []);
 
   const unregisterComponent = useCallback((id: string) => {
+    const info = componentsRef.current.get(id);
     componentsRef.current.delete(id);
     forcedIdsRef.current.delete(id);
+    // Remove screen if no components remain on it
+    if (info?.screenId) {
+      const stillHas = Array.from(componentsRef.current.values()).some(c => c.screenId === info.screenId);
+      if (!stillHas) {
+        screensRef.current.delete(info.screenId);
+        // If we just removed the active screen, switch to the most recent remaining one
+        setActiveScreenId(prev => {
+          if (prev !== info.screenId) return prev;
+          const remaining = Array.from(screensRef.current.values()).sort((a, b) => b.mountedAt - a.mountedAt);
+          return remaining[0]?.key ?? null;
+        });
+      }
+    }
     forceRender(n => n + 1);
   }, []);
 
@@ -419,7 +509,10 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
     components: componentsRef.current,
     registerComponent,
     unregisterComponent,
-  }), [tick, forceLoading, xray, highlight, showWaste, inspectedId, hoveredId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
+    screens: screensRef.current,
+    activeScreenId,
+    setActiveScreenId,
+  }), [tick, forceLoading, xray, highlight, showWaste, inspectedId, hoveredId, activeScreenId, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
 
   const count = componentsRef.current.size;
   const allScores = Array.from(matchScoresRef.current.values()).map(s => s.total);
@@ -489,6 +582,9 @@ export function SkeletonDevTools({ children }: { children?: React.ReactNode }) {
         forcedIds={forcedIdsRef.current}
         setForcedId={setForcedId}
         matchScores={matchScoresRef.current}
+        screens={screensRef.current}
+        activeScreenId={activeScreenId}
+        setActiveScreenId={setActiveScreenId}
         btnX={pos.x} btnY={pos.y}
         theme={theme} setTheme={setTheme}
         dock={dock} setDock={setDock}

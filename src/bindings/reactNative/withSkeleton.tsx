@@ -9,6 +9,7 @@ import React, {
   ComponentType,
 } from 'react';
 import { useDevTools } from '../../context/DevToolsContext';
+import { detectScreenFromNativeInstance } from '../../core/screenDetector';
 import { View, Text, Pressable, Animated, Easing, AccessibilityInfo, UIManager } from 'react-native';
 import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
 import { resolveSpeed } from '../../core/constants';
@@ -321,14 +322,24 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   }, [enabled, resolvedIsLoading, isLayoutCaptured, isSkeletonVisible]);
 
   const structuralBoneCount = structuralBones.length;
+  const screenIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
+    // Detect screen via upward fiber walk on first registration
+    if (screenIdRef.current === null) {
+      const instance = realContentRef.current ?? warmupRef.current;
+      if (instance) {
+        const ancestor = detectScreenFromNativeInstance(instance as object);
+        screenIdRef.current = ancestor?.key ?? '';
+      }
+    }
     registerComponent(id, {
       displayName,
       animation: mergedConfig.animation ?? 'pulse',
       bonesCount: structuralBoneCount,
       isLoading: resolvedIsLoading,
+      screenId: screenIdRef.current || null,
     });
     return () => unregisterComponent(id);
   }, [enabled, id, displayName, mergedConfig.animation, structuralBoneCount, resolvedIsLoading, registerComponent, unregisterComponent]);

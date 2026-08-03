@@ -19,7 +19,7 @@ const _Line = _svg?.Line ?? null;
 const _Polyline = _svg?.Polyline ?? null;
 const _Rect = _svg?.Rect ?? null;
 const _Circle = _svg?.Circle ?? null;
-import { DevToolsContext, type ComponentInfo, type MatchScore } from '../context/DevToolsContext';
+import { DevToolsContext, type ComponentInfo, type MatchScore, type ScreenInfo } from '../context/DevToolsContext';
 
 type IconName =
   | 'play' | 'pause' | 'stop' | 'eye' | 'eyeOff' | 'grid' | 'barChart'
@@ -205,6 +205,7 @@ function Panel({
   xray, setXray,
   showWaste, setShowWaste,
   components, forcedIds, setForcedId, matchScores,
+  screens, activeScreenId, setActiveScreenId,
   inspectedId, setInspectedId,
   panelPos, panHandlers,
   panelTheme, setPanelTheme,
@@ -220,6 +221,9 @@ function Panel({
   setInspectedId: (id: string | null) => void;
   setForcedId: (id: string, forced: boolean) => void;
   matchScores: Map<string, MatchScore>;
+  screens: Map<string, ScreenInfo>;
+  activeScreenId: string | null;
+  setActiveScreenId: (id: string | null) => void;
   inspectedId: string | null;
   panelPos: { x: number; y: number };
   panHandlers: object;
@@ -246,10 +250,15 @@ function Panel({
     }
   }, [visible, inspectedId]);
 
-  const list = Array.from(components.entries());
+  const allEntries = Array.from(components.entries());
+  const list = activeScreenId
+    ? allEntries.filter(([, info]) => info.screenId === activeScreenId)
+    : allEntries;
   const scores = list.map(([id]) => matchScores.get(id)?.total).filter((s): s is number => s !== undefined);
-  const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   const scoreOn5 = avgScore !== null ? (avgScore / 100 * 5).toFixed(1) : null;
+  const screenList = Array.from(screens.values()).sort((a, b) => b.mountedAt - a.mountedAt);
+  const hasScreens = screenList.length > 0;
 
   const SheetEl = GlassView ?? View;
   const glassProps = GlassView ? { intensity: 60 } : {};
@@ -321,9 +330,48 @@ function Panel({
 
       <View style={[s.divider, { backgroundColor: T.border }]} />
 
+      {/* Screen tabs — horizontal scroll, only shown when navigation is detected */}
+      {hasScreens && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.screenTabsScroll} contentContainerStyle={s.screenTabsContent}>
+          <Pressable
+            onPress={() => setActiveScreenId(null)}
+            style={[s.screenTab, activeScreenId === null && s.screenTabActive]}
+          >
+            <Text style={[s.screenTabText, activeScreenId === null && s.screenTabTextActive]}>all</Text>
+          </Pressable>
+          {screenList.map(screen => {
+            const isActive = activeScreenId === screen.key;
+            const label = screen.name || screen.key.slice(0, 12);
+            const screenScores = allEntries
+              .filter(([, info]) => info.screenId === screen.key)
+              .map(([id]) => matchScores.get(id)?.total)
+              .filter((v): v is number => v !== undefined);
+            const avg = screenScores.length > 0
+              ? Math.round(screenScores.reduce((a, b) => a + b, 0) / screenScores.length)
+              : null;
+            return (
+              <Pressable
+                key={screen.key}
+                onPress={() => setActiveScreenId(isActive ? null : screen.key)}
+                style={[s.screenTab, isActive && s.screenTabActiveBlue]}
+              >
+                <Text style={[s.screenTabText, isActive && s.screenTabTextActive]}>{label}</Text>
+                {avg !== null && (
+                  <View style={[s.screenTabBadge, { backgroundColor: scoreColor(avg) }]}>
+                    <Text style={s.screenTabBadgeText}>{avg}%</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <ScrollView ref={scrollRef} style={[s.list, { height: listHeight }]} contentContainerStyle={s.listContent}>
         {list.length === 0 ? (
-          <Text style={[s.empty, { color: T.titleLabel }]}>No components mounted.</Text>
+          <Text style={[s.empty, { color: T.titleLabel }]}>
+            {activeScreenId ? 'No components on this screen.' : 'No components mounted.'}
+          </Text>
         ) : (
           list.map(([id, info]) => {
             const score = matchScores.get(id);
@@ -433,16 +481,39 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
   const componentsRef = useRef<Map<string, ComponentInfo>>(new Map());
   const forcedIdsRef = useRef<Set<string>>(new Set());
   const matchScoresRef = useRef<Map<string, MatchScore>>(new Map());
+  const screensRef = useRef<Map<string, ScreenInfo>>(new Map());
+  const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
   const [tick, forceRender] = useState(0);
 
   const registerComponent = useCallback((id: string, info: ComponentInfo) => {
     componentsRef.current.set(id, info);
+    if (info.screenId) {
+      const existing = screensRef.current.get(info.screenId);
+      screensRef.current.set(info.screenId, {
+        key: info.screenId,
+        name: existing?.name ?? info.screenId,
+        mountedAt: Date.now(),
+      });
+      setActiveScreenId(info.screenId);
+    }
     forceRender(n => n + 1);
   }, []);
 
   const unregisterComponent = useCallback((id: string) => {
+    const info = componentsRef.current.get(id);
     componentsRef.current.delete(id);
     forcedIdsRef.current.delete(id);
+    if (info?.screenId) {
+      const stillHas = Array.from(componentsRef.current.values()).some(c => c.screenId === info.screenId);
+      if (!stillHas) {
+        screensRef.current.delete(info.screenId);
+        setActiveScreenId(prev => {
+          if (prev !== info.screenId) return prev;
+          const remaining = Array.from(screensRef.current.values()).sort((a, b) => b.mountedAt - a.mountedAt);
+          return remaining[0]?.key ?? null;
+        });
+      }
+    }
     forceRender(n => n + 1);
   }, []);
 
@@ -500,7 +571,10 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
     components: componentsRef.current,
     registerComponent,
     unregisterComponent,
-  }), [tick, forceLoading, xray, highlight, showWaste, inspectedId, openAndInspect, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
+    screens: screensRef.current,
+    activeScreenId,
+    setActiveScreenId,
+  }), [tick, forceLoading, xray, highlight, showWaste, inspectedId, activeScreenId, openAndInspect, setForcedId, setMatchScore, registerComponent, unregisterComponent]);
 
   return (
     <DevToolsContext.Provider value={ctx}>
@@ -531,6 +605,9 @@ function SkeletonDevToolsImpl({ children }: { children?: React.ReactNode }) {
           forcedIds={forcedIdsRef.current}
           setForcedId={setForcedId}
           matchScores={matchScoresRef.current}
+          screens={screensRef.current}
+          activeScreenId={activeScreenId}
+          setActiveScreenId={setActiveScreenId}
         />
         )}
 
@@ -684,6 +761,51 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
   ctrlBtnTextActive: {
+    color: '#fff',
+  },
+  screenTabsScroll: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  screenTabsContent: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingBottom: 4,
+  },
+  screenTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: '#27272a',
+  },
+  screenTabActive: {
+    backgroundColor: '#f97316',
+  },
+  screenTabActiveBlue: {
+    backgroundColor: '#0ea5e9',
+  },
+  screenTabText: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#a1a1aa',
+  },
+  screenTabTextActive: {
+    color: '#fff',
+  },
+  screenTabBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  screenTabBadgeText: {
+    fontFamily: 'monospace',
+    fontSize: 8,
+    fontWeight: '700',
     color: '#fff',
   },
   divider: {

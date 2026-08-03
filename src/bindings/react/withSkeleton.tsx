@@ -8,6 +8,7 @@ import React, {
   CSSProperties,
 } from 'react';
 import { useDevTools } from '../../context/DevToolsContext';
+import { detectScreenFromDOMNode } from '../../core/screenDetector';
 import type { Bone, SkeletonConfig, SkeletonEnter, SkeletonExit, StaticBone, WithSkeletonOptions } from '../../core/types';
 import { SKELETON_ENTER_MS, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
@@ -442,9 +443,20 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
 
   // Register in devtools
   const { enabled: dtEnabled, registerComponent, unregisterComponent, setMatchScore } = devTools;
+  const staticScreenIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!dtEnabled) return;
-    registerComponent(id, { displayName, animation: mergedConfig.animation, bonesCount: bones.length, isLoading });
+    if (staticScreenIdRef.current === null && measureRef.current) {
+      const ancestor = detectScreenFromDOMNode(measureRef.current);
+      staticScreenIdRef.current = ancestor?.key ?? '';
+    }
+    registerComponent(id, {
+      displayName,
+      animation: mergedConfig.animation,
+      bonesCount: bones.length,
+      isLoading,
+      screenId: staticScreenIdRef.current || null,
+    });
   }, [dtEnabled, registerComponent, id, displayName, mergedConfig.animation, bones.length, isLoading]);
   useEffect(() => {
     if (!dtEnabled) return;
@@ -664,13 +676,20 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
   const { enabled: dtEnabled, registerComponent, unregisterComponent, setMatchScore } = devTools;
   const structuralBoneCount = structuralBones.length;
+  const screenIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!dtEnabled) return;
+    // Detect screen on first registration; result is stable for the component lifetime
+    if (screenIdRef.current === null && contentRef.current) {
+      const ancestor = detectScreenFromDOMNode(contentRef.current);
+      screenIdRef.current = ancestor?.key ?? '';
+    }
     registerComponent(id, {
       displayName,
       animation: mergedConfig.animation,
       bonesCount: structuralBoneCount,
       isLoading,
+      screenId: screenIdRef.current || null,
     });
   }, [dtEnabled, registerComponent, id, displayName, mergedConfig.animation, structuralBoneCount, isLoading]);
 

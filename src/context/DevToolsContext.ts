@@ -21,6 +21,11 @@ export interface DevToolsContextValue {
   components: Map<string, ComponentInfo>;
   registerComponent: (id: string, info: ComponentInfo) => void;
   unregisterComponent: (id: string) => void;
+  /** Screens detected via fiber walk, keyed by route key. */
+  screens: Map<string, ScreenInfo>;
+  /** Key of the most recently active screen (auto-detected). null = show all. */
+  activeScreenId: string | null;
+  setActiveScreenId: (id: string | null) => void;
 }
 
 export interface MatchScore {
@@ -42,6 +47,17 @@ export interface ComponentInfo {
   animation: string;
   bonesCount: number;
   isLoading: boolean;
+  /** Key of the screen-level fiber ancestor, detected automatically via fiber walk. */
+  screenId: string | null;
+}
+
+export interface ScreenInfo {
+  /** The fiber key set by the navigation library (route key). */
+  key: string;
+  /** Display name of the component at the screen boundary. */
+  name: string;
+  /** Timestamp of the most recent component registration on this screen. */
+  mountedAt: number;
 }
 
 const defaultValue: DevToolsContextValue = {
@@ -65,6 +81,9 @@ const defaultValue: DevToolsContextValue = {
   components: new Map(),
   registerComponent: () => {},
   unregisterComponent: () => {},
+  screens: new Map(),
+  activeScreenId: null,
+  setActiveScreenId: () => {},
 };
 
 // Singleton: share the same context object across multiple bundle instances
