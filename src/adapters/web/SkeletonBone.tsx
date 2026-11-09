@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, CSSProperties } from 'react';
 import type { Bone, SkeletonConfig } from '../../core/types';
-import { resolveBoneFill } from '../../core/constants';
+import { isBoneAnimated, resolveBoneFill } from '../../core/constants';
 import { createPulseAnimation } from './animations/pulse';
 import { createWaveAnimation } from './animations/wave';
 import { createShiverAnimation } from './animations/shiver';
@@ -56,7 +56,7 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const effectiveAnimation = (reduceMotion || bone.isStatic) ? 'none' : config.animation;
+  const effectiveAnimation = (reduceMotion || !isBoneAnimated(bone, config)) ? 'none' : config.animation;
 
   const baseStyle: CSSProperties = {
     position: 'absolute',

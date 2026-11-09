@@ -97,6 +97,7 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   // '' = same as color. Boxes are drawn translucent behind their content bones.
   boxColor: '',
   boxOpacity: 0.25,
+  boxAnimated: false,
   speed: 'normal',
   borderRadius: 4,
   direction: 'ltr',
@@ -139,6 +140,19 @@ export function resolveBoneFill(
     backgroundColor: config.color,
     ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
   };
+}
+
+/**
+ * Whether a bone runs the configured animation. Container boxes are still
+ * unless boxAnimated is set (and never when declared static); other bones
+ * animate unless flagged static.
+ */
+export function isBoneAnimated(
+  bone: { isBox?: boolean; boxStatic?: boolean; isStatic?: boolean },
+  config: Pick<Required<SkeletonConfig>, 'boxAnimated'>
+): boolean {
+  if (bone.isBox) return config.boxAnimated && !bone.boxStatic;
+  return !bone.isStatic;
 }
 
 /**
