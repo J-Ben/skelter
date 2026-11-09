@@ -14,6 +14,7 @@ import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 import { generateBones } from '../../core/generateBones';
+import { resolveMockProps } from '../../core/options';
 
 
 type ExitPhase = 'visible' | 'exiting' | 'hidden';
@@ -311,7 +312,7 @@ export interface SkeletonProps {
 
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>,
-  options?: WithSkeletonOptions
+  options?: WithSkeletonOptions<P>
 ): ComponentType<P & SkeletonProps> {
   const displayName =
     (Component as { displayName?: string }).displayName ||
@@ -350,7 +351,7 @@ export function withSkeleton<P extends object>(
     return (
       <WebSkeletonRenderer
         componentProps={componentProps as P}
-        mockProps={options?.mockProps as Partial<P>}
+        mockProps={resolveMockProps(options)}
         Component={Component}
         isLoading={resolvedIsLoading}
         skeletonConfig={skeletonConfig}

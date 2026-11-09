@@ -379,7 +379,7 @@ export interface StaticBone {
  * Options for withSkeleton (second argument).
  * All fields are optional : sensible defaults are applied.
  */
-export interface WithSkeletonOptions {
+export interface WithSkeletonOptions<P = Record<string, unknown>> {
   /**
    * 'auto'      → one bone per leaf element (default)
    * 'root-only' → single root block (v0.2 compat)
@@ -388,7 +388,7 @@ export interface WithSkeletonOptions {
   /**
    * Maximum depth of the fiber tree walk.
    * Prevents runaway traversal on deeply nested components.
-   * Default: 8
+   * Default: 20
    */
   maxDepth?: number;
   /**
@@ -417,8 +417,25 @@ export interface WithSkeletonOptions {
    *   withSkeleton(ArticleCard, {
    *     mockProps: { article: { title: 'Lorem ipsum', image: null } }
    *   })
+   *
+   * Alias of `mockData`, kept for backward compatibility. When both are set,
+   * `mockData` wins.
    */
   mockProps?: Record<string, unknown>;
+  /**
+   * Realistic values rendered during the invisible measurement pass, so the
+   * skeleton gets the dimensions of real content before data arrives.
+   * Same behaviour as `mockProps`, typed against the wrapped component's props.
+   *
+   * The mock is spread OVER the real props for the measurement pass only:
+   * a key present in `mockData` always wins over the real prop of the same name.
+   *
+   * @example
+   * withSkeleton(MyCard, {
+   *   mockData: { title: 'Jean VALJEAN', subtitle: 'Réalisé le 12/08/2026' },
+   * })
+   */
+  mockData?: Partial<P>;
   /**
    * Predefined bones : bypasses layout measurement entirely.
    * No warmup render, no blank frame, no ResizeObserver.
