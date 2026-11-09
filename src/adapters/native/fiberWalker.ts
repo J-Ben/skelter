@@ -167,6 +167,8 @@ interface WalkContext {
   skipIds: Set<string>;
   /** skipIds actually met during the walk (for dev warnings) */
   matchedSkipIds: Set<string>;
+  /** Host fiber treated as an implicit SkeletonBox (skeletonRoot) */
+  rootBoxFiber: unknown;
   out: CollectedNode[];
 }
 
@@ -207,7 +209,8 @@ function walkFiber(
       if (sibling) walkFiber(sibling, depth, ctx);
       return;
     }
-    const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
+    const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__' ||
+      fiber === ctx.rootBoxFiber;
     const paragraph = parseParagraph(props.testID as string | undefined);
     const paragraphLines = paragraph?.lines;
     const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
@@ -283,6 +286,27 @@ function walkFiber(
   }
 }
 
+/**
+ * Depth-first search, inside the subtree of `fiber` (its own siblings are not
+ * visited), for the first known host fiber matching `predicate`.
+ */
+function findHostFiber(
+  fiber: Record<string, unknown>,
+  predicate: (props: Record<string, unknown>) => boolean
+): Record<string, unknown> | null {
+  let child = fiber.child as Record<string, unknown> | null;
+  while (child) {
+    const isHost = (child.tag as number) === 5 || typeof child.type === 'string';
+    if (isHost && isKnownHost(getTypeName(child)) && predicate((child.memoizedProps ?? {}) as Record<string, unknown>)) {
+      return child;
+    }
+    const found = findHostFiber(child, predicate);
+    if (found) return found;
+    child = child.sibling as Record<string, unknown> | null;
+  }
+  return null;
+}
+
 // ─── Measurement ─────────────────────────────────────────────────────────────
 
 type MeasureCallback = (
@@ -340,6 +364,10 @@ export interface FiberWalkOptions {
   exclude: string[];
   /** nativeIDs collected as a single solid bone, children ignored (v4) */
   skipIds?: string[];
+  /** Treat the component's root element as an implicit SkeletonBox (v4) */
+  skeletonRoot?: boolean;
+  /** nativeID of the element to use as the skeleton root instead of the first one (v4) */
+  rootId?: string;
 }
 
 /**
@@ -375,11 +403,29 @@ export function measureFiberLeaves(
       excludeSet: new Set(options.exclude),
       skipIds: new Set(options.skipIds ?? []),
       matchedSkipIds: new Set(),
+      rootBoxFiber: null,
       out: collected,
     };
 
     try {
-      walkFiber(fiber as Record<string, unknown>, 0, ctx, false);
+      const rootFiber = fiber as Record<string, unknown>;
+      // rootId: walk only the subtree of that element. Positions stay relative
+      // to the measured root, so the wrapper around it keeps its space.
+      let walkStart = rootFiber;
+      if (options.rootId) {
+        const target = findHostFiber(rootFiber, props => props.nativeID === options.rootId);
+        if (target) {
+          walkStart = target;
+        } else {
+          warnOnce(`rootId:${options.rootId}`, `rootId: no element with nativeID "${options.rootId}" was found; using the whole component.`);
+        }
+      }
+      // skeletonRoot: the root element (rootId target, else the first host
+      // element rendered by the component) becomes an implicit SkeletonBox.
+      if (options.skeletonRoot) {
+        ctx.rootBoxFiber = walkStart !== rootFiber ? walkStart : findHostFiber(rootFiber, () => true);
+      }
+      walkFiber(walkStart, 0, ctx, false);
     } catch {
       resolve(null);
       return;

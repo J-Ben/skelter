@@ -12,6 +12,7 @@ import type { Bone, SkeletonConfig, SkeletonEnter, SkeletonExit, StaticBone, Wit
 import { SKELETON_ENTER_MS, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
+import type { WebMeasureOptions } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 import { generateBones } from '../../core/generateBones';
 import { resolveMockProps } from '../../core/options';
@@ -352,7 +353,7 @@ export function withSkeleton<P extends object>(
       <WebSkeletonRenderer
         componentProps={componentProps as P}
         mockProps={resolveMockProps(options)}
-        skipIds={options?.skipIds}
+        measureOptions={options}
         Component={Component}
         isLoading={resolvedIsLoading}
         skeletonConfig={skeletonConfig}
@@ -588,7 +589,7 @@ interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
   componentProps: P;
   mockProps?: Partial<P>;
-  skipIds?: string[];
+  measureOptions?: WebMeasureOptions;
   isLoading: boolean;
   skeletonConfig?: SkeletonConfig;
   displayName?: string;
@@ -598,7 +599,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   Component,
   componentProps,
   mockProps,
-  skipIds,
+  measureOptions,
   isLoading: isLoadingProp,
   skeletonConfig,
   displayName = 'Component',
@@ -609,7 +610,11 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const xray = devTools.enabled && devTools.xray;
   const showWaste = devTools.enabled && devTools.showWaste;
 
-  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout({ skipIds });
+  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout({
+    skipIds: measureOptions?.skipIds,
+    skeletonRoot: measureOptions?.skeletonRoot,
+    rootId: measureOptions?.rootId,
+  });
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
     hasSkeleton: true,

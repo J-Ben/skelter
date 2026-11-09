@@ -452,6 +452,28 @@ export interface WithSkeletonOptions<P = Record<string, unknown>> {
    */
   skipIds?: string[];
   /**
+   * Treats the component's root element as an implicit SkeletonBox (v4): while
+   * loading, the card frame shows as a translucent static bone and the bones of
+   * its content are drawn on top. Removes the need for a SkeletonBox around
+   * the root, including when the root is a Pressable / TouchableOpacity.
+   *
+   * The root is the first element rendered by the component, or the `rootId`
+   * element when set. A root that already is a SkeletonBox is left as is.
+   */
+  skeletonRoot?: boolean;
+  /**
+   * nativeID (web: `id`) of the element to use as the skeleton root instead of
+   * the first rendered element (v4). Only that element's subtree is measured;
+   * the wrapper around it keeps its space but gets no bones. With
+   * `skeletonRoot`, this element is the one turned into a box.
+   *
+   * Typical use: a card inside an outer spacing wrapper you don't want greyed.
+   *
+   * @example
+   * withSkeleton(Section, { skeletonRoot: true, rootId: 'card-body' })
+   */
+  rootId?: string;
+  /**
    * Predefined bones : bypasses layout measurement entirely.
    * No warmup render, no blank frame, no ResizeObserver.
    * Skeleton is shown immediately on first render.

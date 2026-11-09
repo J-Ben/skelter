@@ -203,24 +203,34 @@ function buildRootOnlyHook(
  * SkeletonBox nodes become parents of any layout whose bounds fall
  * entirely within theirs (geometric containment). All other layouts
  * stay as root-level children.
+ *
+ * Nested boxes (a card frame containing an icon pastille): each leaf goes to
+ * the SMALLEST box containing it, and boxes are emitted largest first, so an
+ * inner box is drawn over the outer box but under its own leaves. Taking the
+ * first matching box (v3) gave every leaf to the outer box, and the inner box
+ * was then drawn on top of its own content.
  */
-function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
-  const boxes = layouts.filter(l => l.isSkeletonBox);
+export function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
+  const area = (l: MeasuredLayout) => l.width * l.height;
+  const boxes = layouts.filter(l => l.isSkeletonBox).sort((a, b) => area(b) - area(a));
   const leaves = layouts.filter(l => !l.isSkeletonBox);
 
   if (boxes.length === 0) {
     return leaves.map(l => ({ layout: l, children: [] }));
   }
 
+  const contains = (b: MeasuredLayout, l: MeasuredLayout) =>
+    l.x >= b.x && l.y >= b.y &&
+    l.x + l.width <= b.x + b.width &&
+    l.y + l.height <= b.y + b.height;
+
   const boxChildren = new Map<MeasuredLayout, BoneTree[]>(boxes.map(b => [b, []]));
   const rootChildren: BoneTree[] = [];
 
   for (const l of leaves) {
-    const parent = boxes.find(
-      b => l.x >= b.x && l.y >= b.y &&
-           l.x + l.width <= b.x + b.width &&
-           l.y + l.height <= b.y + b.height
-    );
+    // boxes is sorted largest first : the last match is the innermost box.
+    let parent: MeasuredLayout | undefined;
+    for (const b of boxes) if (contains(b, l)) parent = b;
     if (parent) {
       boxChildren.get(parent)!.push({ layout: l, children: [] });
     } else {
@@ -241,6 +251,8 @@ interface AutoMeasureOptions {
   maxDepth: number;
   exclude: string[];
   skipIds: string[];
+  skeletonRoot: boolean;
+  rootId?: string;
 }
 
 function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
@@ -328,6 +340,8 @@ export interface UseMeasureLayoutOptions {
   exclude: string[];
   boneStyle?: BoneStyleOverride;
   skipIds?: string[];
+  skeletonRoot?: boolean;
+  rootId?: string;
 }
 
 /**
@@ -347,7 +361,13 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
   // The strategy must not change after mount (it's derived from static options).
   if (opts.strategy === 'auto') {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude, skipIds: opts.skipIds ?? [] });
+    return buildAutoHook({
+      maxDepth: opts.maxDepth,
+      exclude: opts.exclude,
+      skipIds: opts.skipIds ?? [],
+      skeletonRoot: opts.skeletonRoot ?? false,
+      rootId: opts.rootId,
+    });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude, opts.skipIds ?? []);
