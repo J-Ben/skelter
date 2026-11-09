@@ -393,6 +393,12 @@ export function measureFiberLeaves(
   return new Promise(resolve => {
     const fiber = getFiber(rootInstance);
     if (!fiber) {
+      warnOnce(
+        'no-fiber',
+        'cannot reach the React fiber tree from the measured View (none of ' +
+        `${FIBER_KEYS.join(', ')} is set). React / React Native internals may have changed; ` +
+        'skeletons fall back to a single block per component.'
+      );
       resolve(null);
       return;
     }
