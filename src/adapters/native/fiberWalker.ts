@@ -155,16 +155,20 @@ function extractTextContent(children: unknown): string {
 /**
  * Depth-first walk of the Fiber tree rooted at `fiber`.
  * Collects host component fibers (string type) that are leaf elements.
- * Recurses into siblings at the same depth level.
+ * Recurses into siblings at the same depth level, except for the root of the
+ * walk (`withSiblings: false`) : the root's siblings live outside the measured
+ * component (e.g. the hidden real-content View next to the warmup View).
  */
 function walkFiber(
   fiber: Record<string, unknown>,
   depth: number,
   maxDepth: number,
   excludeSet: Set<string>,
-  out: CollectedNode[]
+  out: CollectedNode[],
+  withSiblings = true
 ): void {
   if (!fiber || depth > maxDepth) return;
+  const sibling = withSiblings ? (fiber.sibling as Record<string, unknown> | null) : null;
 
   const fiberType = fiber.type;
   const typeName = getTypeName(fiber);
@@ -172,9 +176,7 @@ function walkFiber(
 
   if (excludeSet.has(typeName)) {
     // Excluded : traverse siblings but not children
-    if (fiber.sibling) {
-      walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
-    }
+    if (sibling) walkFiber(sibling, depth, maxDepth, excludeSet, out);
     return;
   }
 
@@ -192,7 +194,7 @@ function walkFiber(
     const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
     // SkeletonIgnore: skip this node and all its descendants
     if (props.testID === '__skl_ignore__') {
-      if (fiber.sibling) walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
+      if (sibling) walkFiber(sibling, depth, maxDepth, excludeSet, out);
       return;
     }
     const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
@@ -261,8 +263,8 @@ function walkFiber(
   if (fiber.child && !skipChildren) {
     walkFiber(fiber.child as Record<string, unknown>, depth + 1, maxDepth, excludeSet, out);
   }
-  if (fiber.sibling) {
-    walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
+  if (sibling) {
+    walkFiber(sibling, depth, maxDepth, excludeSet, out);
   }
 }
 
@@ -354,7 +356,7 @@ export function measureFiberLeaves(
     const excludeSet = new Set(options.exclude);
 
     try {
-      walkFiber(fiber as Record<string, unknown>, 0, options.maxDepth, excludeSet, collected);
+      walkFiber(fiber as Record<string, unknown>, 0, options.maxDepth, excludeSet, collected, false);
     } catch {
       resolve(null);
       return;
