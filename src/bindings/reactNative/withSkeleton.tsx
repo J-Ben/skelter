@@ -60,14 +60,25 @@ function CascadeBone({ bone, delay, children }: {
 
 const _FallbackContext = createContext<unknown>(null);
 let _VirtualizedListContext: React.Context<unknown> = _FallbackContext;
+// Since RN 0.72 the lists live in @react-native/virtualized-lists; the
+// react-native/Libraries path no longer exports VirtualizedListContext in
+// recent versions (0.86+). Each require must stay a literal call inside its
+// own try/catch so Metro treats it as an optional dependency.
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('react-native/Libraries/Lists/VirtualizedListContext');
-  if (mod?.VirtualizedListContext) {
-    _VirtualizedListContext = mod.VirtualizedListContext;
-  }
+  const mod = require('@react-native/virtualized-lists/Lists/VirtualizedListContext');
+  if (mod?.VirtualizedListContext) _VirtualizedListContext = mod.VirtualizedListContext;
 } catch {
-  // Module unavailable : fallback context stays in use
+  // Package unavailable (RN < 0.72) : try the legacy path below
+}
+if (_VirtualizedListContext === _FallbackContext) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('react-native/Libraries/Lists/VirtualizedListContext');
+    if (mod?.VirtualizedListContext) _VirtualizedListContext = mod.VirtualizedListContext;
+  } catch {
+    // Module unavailable : fallback context stays in use
+  }
 }
 
 function useIsInFlatList(): boolean {
@@ -200,9 +211,13 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const id = useId();
   const { enabled, registerComponent, unregisterComponent, setMatchScore, inspectedId, setInspectedId, matchScores, forcedIds, forceLoading, xray, showWaste, highlight } = useDevTools();
 
-  // In FlatList, per-element walk is expensive (50 items × N fibers).
-  // Force root-only inside VirtualizedList.
-  const effectiveStrategy = isInFlatList ? 'root-only' : hocOptions.measureStrategy;
+  // v3 forced 'root-only' (one block per item) inside a VirtualizedList, but
+  // list detection never worked in published builds, so every app shipped
+  // per-element bones in lists. v4 keeps that behaviour now that detection
+  // works : lists use the configured strategy; pass measureStrategy:
+  // 'root-only' to get one block per item. Detection still drives
+  // maxBonesInList and the shatter → pulse fallback.
+  const effectiveStrategy = hocOptions.measureStrategy;
 
   const effectiveConfig: SkeletonConfig | undefined =
     isInFlatList && skeletonConfig?.animation === 'shatter'
