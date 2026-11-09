@@ -25,6 +25,13 @@ export interface Bone {
   isParagraph?: boolean;
   /** When true, the bone is rendered without animation (static placeholder). */
   isStatic?: boolean;
+  /**
+   * True for the background of a SkeletonBox (or skeletonRoot) container.
+   * Renderers paint it with boxColor / boxOpacity instead of color / opacity.
+   */
+  isBox?: boolean;
+  /** True when the SkeletonBox was declared `static`: never animated, even with boxAnimated. */
+  boxStatic?: boolean;
 }
 
 /**
@@ -182,6 +189,22 @@ export interface SkeletonConfig {
   color?: string;
   /** Highlight color used during animation */
   highlightColor?: string;
+  /**
+   * Background color of SkeletonBox / skeletonRoot containers (v4).
+   * Default: '' — same as `color`.
+   */
+  boxColor?: string;
+  /**
+   * Opacity (0–1) of SkeletonBox / skeletonRoot container backgrounds (v4).
+   * Default: 0.25.
+   */
+  boxOpacity?: number;
+  /**
+   * Whether SkeletonBox / skeletonRoot backgrounds run the skeleton animation
+   * (v4). Default: false — the container stays still, only the content bones
+   * animate. A `<SkeletonBox static>` never animates.
+   */
+  boxAnimated?: boolean;
   /**
    * Animation speed : named preset or numeric multiplier.
    * 'slow' | 'normal' | 'rapid' or a custom number (1.0 = normal).

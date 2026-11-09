@@ -21,6 +21,12 @@ export interface SkeletonThemeProps {
   color?: string;
   /** Highlight color used during animation */
   highlightColor?: string;
+  /** Background color of SkeletonBox / skeletonRoot containers : default = color */
+  boxColor?: string;
+  /** Opacity of SkeletonBox / skeletonRoot container backgrounds : default 0.25 */
+  boxOpacity?: number;
+  /** Animate SkeletonBox / skeletonRoot container backgrounds : default false */
+  boxAnimated?: boolean;
   /** Animation speed multiplier */
   speed?: number;
   /** Default corner radius for all bones */
@@ -156,6 +162,9 @@ export function SkeletonTheme({
   animation,
   color,
   highlightColor,
+  boxColor,
+  boxOpacity,
+  boxAnimated,
   speed,
   borderRadius,
   direction,
@@ -185,6 +194,9 @@ export function SkeletonTheme({
       ...(animation !== undefined && { animation }),
       ...(color !== undefined && { color }),
       ...(highlightColor !== undefined && { highlightColor }),
+      ...(boxColor !== undefined && { boxColor }),
+      ...(boxOpacity !== undefined && { boxOpacity }),
+      ...(boxAnimated !== undefined && { boxAnimated }),
       ...(speed !== undefined && { speed }),
       ...(borderRadius !== undefined && { borderRadius }),
       ...(direction !== undefined && { direction }),
@@ -212,7 +224,7 @@ export function SkeletonTheme({
     }),
     [
       parentContext.config,
-      animation, color, highlightColor, speed,
+      animation, color, highlightColor, boxColor, boxOpacity, boxAnimated, speed,
       borderRadius, direction, minDuration,
       disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, cascade,
       conditions, adaptive,

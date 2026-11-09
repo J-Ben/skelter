@@ -168,6 +168,8 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
       type: node.layout.type,
       opacity: 0.25,
       isStatic: true,
+      isBox: true,
+      ...(node.layout.isSkeletonBoxStatic ? { boxStatic: true } : {}),
     });
     for (const child of node.children) {
       collectBones(child, bones);
