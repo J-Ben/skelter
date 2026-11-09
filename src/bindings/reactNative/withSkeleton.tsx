@@ -369,7 +369,8 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   // Enter animation: fade in skeleton when it first becomes visible.
-  const enterOpacityRef = useRef(new Animated.Value(0)).current;
+  // Starts at 1 without an enter animation, so the first painted frame already shows the bones.
+  const enterOpacityRef = useRef(new Animated.Value(mergedConfig.enter === 'none' ? 1 : 0)).current;
 
   // Exit animation: fade + translate bones when loading → loaded transition.
   const exitOpacityRef = useRef(new Animated.Value(1)).current;
@@ -384,8 +385,11 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   }, []);
 
   // Enter fade: animate opacity 0→1 when skeleton becomes visible.
+  // Only when an enter animation is configured : v3 always faded in on native,
+  // ignoring the documented default enter: 'none', which painted blank frames
+  // (content hidden, bones still at opacity 0) at the start of every load.
   useEffect(() => {
-    if (isSkeletonVisible && !reduceMotion) {
+    if (isSkeletonVisible && !reduceMotion && mergedConfig.enter !== 'none') {
       enterOpacityRef.setValue(0);
       Animated.timing(enterOpacityRef, {
         toValue: 1,
