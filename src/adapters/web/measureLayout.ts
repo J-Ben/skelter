@@ -47,7 +47,13 @@ function readBorderRadius(element: Element): number {
     return isNaN(parsed) ? 0 : parsed;
 }
 
-function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
+/** v4 measurement options shared with the React Native adapter. */
+export interface WebMeasureOptions {
+    /** `id` attributes collected as one solid bone, children ignored */
+    skipIds?: string[];
+}
+
+function buildBoneTree(element: Element, rootRect: DOMRect, skipIds: Set<string>): BoneTree {
     const rect = element.getBoundingClientRect();
     const testid = element.getAttribute('data-testid');
     const paragraph = parseParagraph(testid);
@@ -73,12 +79,14 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
         paragraphWords: paragraph?.words,
     };
 
-    // Paragraph wrapper: collected as one block, inner text must not add bones.
+    // Paragraph wrapper or skipIds element: collected as one block, children
+    // ignored (no children → generateBones treats it as a leaf bone).
+    const isSkipped = element.id !== '' && skipIds.has(element.id);
     const children: BoneTree[] = [];
-    if (paragraphLines === undefined) {
+    if (paragraphLines === undefined && !isSkipped) {
         for (const child of Array.from(element.children)) {
             if (child instanceof HTMLElement) {
-                children.push(buildBoneTree(child, rootRect));
+                children.push(buildBoneTree(child, rootRect, skipIds));
             }
         }
     }
@@ -97,7 +105,11 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
  *
  * @returns WebMeasureLayoutResult with boneTree, rootRef and isLayoutCaptured
  */
-export function useMeasureLayout(): WebMeasureLayoutResult {
+export function useMeasureLayout(options: WebMeasureOptions = {}): WebMeasureLayoutResult {
+    // Options come from withSkeleton's static second argument : stable for the
+    // lifetime of the component, so reading them through a ref is enough.
+    const optionsRef = useRef(options);
+    optionsRef.current = options;
     const rootRef = useRef<HTMLElement>(null);
     const [boneTree, setBoneTree] = useState<BoneTree | null>(null);
     const [isLayoutCaptured, setIsLayoutCaptured] = useState(false);
@@ -109,7 +121,7 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
         const rect = element.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
-        const tree = buildBoneTree(element, rect);
+        const tree = buildBoneTree(element, rect, new Set(optionsRef.current.skipIds ?? []));
         setBoneTree(tree);
         setIsLayoutCaptured(true);
     }, []);

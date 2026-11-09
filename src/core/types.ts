@@ -437,6 +437,21 @@ export interface WithSkeletonOptions<P = Record<string, unknown>> {
    */
   mockData?: Partial<P>;
   /**
+   * nativeIDs (web: `id` attributes) of elements that become ONE solid bone,
+   * without descending into them (v4).
+   *
+   * Typical use: a badge or chip whose container has a visual shape. Without
+   * it, only the inner Text is measured and the skeleton shows a small
+   * rectangle lost in the middle of the badge.
+   *
+   * Put the id on the CONTAINER you want greyed out, not on its inner Text.
+   *
+   * @example
+   * // <View nativeID="status-badge" style={styles.badge}><Text>Payée</Text></View>
+   * withSkeleton(InvoiceCard, { skipIds: ['status-badge'] })
+   */
+  skipIds?: string[];
+  /**
    * Predefined bones : bypasses layout measurement entirely.
    * No warmup render, no blank frame, no ResizeObserver.
    * Skeleton is shown immediately on first render.

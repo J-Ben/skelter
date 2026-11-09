@@ -352,6 +352,7 @@ export function withSkeleton<P extends object>(
       <WebSkeletonRenderer
         componentProps={componentProps as P}
         mockProps={resolveMockProps(options)}
+        skipIds={options?.skipIds}
         Component={Component}
         isLoading={resolvedIsLoading}
         skeletonConfig={skeletonConfig}
@@ -587,6 +588,7 @@ interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
   componentProps: P;
   mockProps?: Partial<P>;
+  skipIds?: string[];
   isLoading: boolean;
   skeletonConfig?: SkeletonConfig;
   displayName?: string;
@@ -596,6 +598,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   Component,
   componentProps,
   mockProps,
+  skipIds,
   isLoading: isLoadingProp,
   skeletonConfig,
   displayName = 'Component',
@@ -606,7 +609,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const xray = devTools.enabled && devTools.xray;
   const showWaste = devTools.enabled && devTools.showWaste;
 
-  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout();
+  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout({ skipIds });
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
     hasSkeleton: true,
