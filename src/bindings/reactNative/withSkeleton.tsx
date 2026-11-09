@@ -15,6 +15,7 @@ import { resolveSpeed } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
 import { generateBones } from '../../core/generateBones';
+import { resolveMockProps } from '../../core/options';
 import type { ScoringRect } from '../../adapters/native/measureLayout';
 import { measureFiberLeaves } from '../../adapters/native/fiberWalker';
 import { SkeletonBone } from '../../adapters/native/SkeletonBone';
@@ -81,7 +82,7 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
-type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle'>> & { boneStyle?: BoneStyleOverride };
+type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData'>> & { boneStyle?: BoneStyleOverride };
 
 /** Default WithSkeletonOptions applied when no second argument is passed. */
 const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
@@ -99,7 +100,8 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  * @param options   - Optional measurement configuration
  *   measureStrategy: 'auto' (default) : one bone per leaf element via Fiber walk
  *   measureStrategy: 'root-only'      : single block, identical to v0.2
- *   maxDepth: max depth of Fiber traversal (default 8)
+ *   maxDepth: max depth of Fiber traversal (default 20)
+ *   mockData: realistic props for the measurement pass (alias: mockProps)
  *   exclude: component displayNames excluded from per-element measurement
  *
  * @example
@@ -114,7 +116,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  */
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>,
-  options?: WithSkeletonOptions
+  options?: WithSkeletonOptions<P>
 ): ComponentType<P & SkeletonProps> {
   const displayName =
     (Component as { displayName?: string }).displayName ||
@@ -125,6 +127,7 @@ export function withSkeleton<P extends object>(
     ...DEFAULT_HOC_OPTIONS,
     ...options,
     exclude: [...DEFAULT_HOC_OPTIONS.exclude, ...(options?.exclude ?? [])],
+    mockProps: (resolveMockProps(options) ?? DEFAULT_HOC_OPTIONS.mockProps) as Record<string, unknown>,
   };
 
   const WrappedComponent = memo((props: P & SkeletonProps) => {
