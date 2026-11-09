@@ -381,7 +381,6 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
 
     // Transition from visible → hidden: trigger exit animation.
     if (wasVisible && !isNowVisible && !isExiting) {
-      console.log('[EXIT-TRIGGERED-DIRECT]', { exitType: mergedConfig.exit, reduceMotion });
       const exitType = mergedConfig.exit;
       const shouldAnimateExit = exitType !== 'none' && !reduceMotion;
 
