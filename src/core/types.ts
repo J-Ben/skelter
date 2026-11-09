@@ -191,7 +191,10 @@ export interface SkeletonConfig {
   borderRadius?: number;
   /** Animation direction : useful for RTL layouts */
   direction?: 'ltr' | 'rtl';
-  /** Minimum duration in ms the skeleton stays visible */
+  /**
+   * Minimum duration in ms the skeleton stays visible once shown.
+   * Default: 500 (v4; was 0 in v1–v3). Set 0 to hide it as soon as data arrives.
+   */
   minDuration?: number;
   /** If true, skeleton is never displayed regardless of isLoading */
   disabled?: boolean;
