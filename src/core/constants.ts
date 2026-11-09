@@ -94,6 +94,9 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   animation: 'pulse',
   color: '#E0E0E0',
   highlightColor: '#F5F5F5',
+  // '' = same as color. Boxes are drawn translucent behind their content bones.
+  boxColor: '',
+  boxOpacity: 0.25,
   speed: 'normal',
   borderRadius: 4,
   direction: 'ltr',
@@ -119,6 +122,24 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   conditions: {},
   adaptive: [],
 };
+
+/**
+ * Background color and opacity of a bone : container boxes use boxColor /
+ * boxOpacity (boxColor falls back to color), every other bone uses color and
+ * its own opacity override, if any.
+ */
+export function resolveBoneFill(
+  bone: { isBox?: boolean; opacity?: number },
+  config: Pick<Required<SkeletonConfig>, 'color' | 'boxColor' | 'boxOpacity'>
+): { backgroundColor: string; opacity?: number } {
+  if (bone.isBox) {
+    return { backgroundColor: config.boxColor || config.color, opacity: config.boxOpacity };
+  }
+  return {
+    backgroundColor: config.color,
+    ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
+  };
+}
 
 /**
  * Resolves an AnimationSpeed value to a numeric multiplier.

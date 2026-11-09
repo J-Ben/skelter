@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Animated, AccessibilityInfo, Easing } from 'react-native';
 import type { Bone, SkeletonConfig } from '../../core/types';
 import { GradientShimmer } from './GradientShimmer';
-import { resolveSpeed } from '../../core/constants';
+import { resolveBoneFill, resolveSpeed } from '../../core/constants';
 
 export interface SkeletonBoneProps {
   bone: Bone;
@@ -44,7 +44,10 @@ export const SkeletonBone = React.memo(function SkeletonBone({
   }, []);
 
   // reduceMotion → fall through to 'none' (static bone, no shimmer)
-  const effectiveAnimation = reduceMotion ? 'none' : config.animation;
+  // Static bones (SkeletonBox / skeletonRoot backgrounds) never animate, as on
+  // web : v3 ignored isStatic on native, so the shimmer ran over the box in
+  // the bones' color.
+  const effectiveAnimation = (reduceMotion || bone.isStatic) ? 'none' : config.animation;
 
   // Cascade for wave/shiver: drive a per-bone 0→1 loop with delay.
   useEffect(() => {
@@ -256,9 +259,8 @@ export const SkeletonBone = React.memo(function SkeletonBone({
           width: bone.width,
           height: bone.height,
           borderRadius: bone.borderRadius || config.borderRadius,
-          backgroundColor: config.color,
           overflow: 'hidden',
-          ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
+          ...resolveBoneFill(bone, config),
         },
         outerAnimatedStyle,
       ]}

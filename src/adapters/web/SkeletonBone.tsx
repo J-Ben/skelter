@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, CSSProperties } from 'react';
 import type { Bone, SkeletonConfig } from '../../core/types';
+import { resolveBoneFill } from '../../core/constants';
 import { createPulseAnimation } from './animations/pulse';
 import { createWaveAnimation } from './animations/wave';
 import { createShiverAnimation } from './animations/shiver';
@@ -64,9 +65,8 @@ export const SkeletonBone = React.memo(function SkeletonBone({
     width: bone.width,
     height: bone.height,
     borderRadius: bone.borderRadius || config.borderRadius,
-    backgroundColor: config.color,
     overflow: 'hidden',
-    ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
+    ...resolveBoneFill(bone, config),
   };
 
   const shatterSquares = useMemo(
