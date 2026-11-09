@@ -3,6 +3,7 @@ import { UIManager } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy, BoneStyleOverride } from '../../core/types';
 import { measureFiberLeaves } from './fiberWalker';
+import { warnOnce } from '../../core/dev';
 
 /**
  * Detects the element type from a React Native component displayName.
@@ -281,8 +282,10 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
         measureFiberLeaves(instance, rootPageX, rootPageY, options)
           .then(layouts => {
             if (!layouts || layouts.length === 0) {
-              console.warn(
-                '[skelter] auto strategy: 0 leaves found, falling back to root-only. ' +
+              // Development only, once : v3 logged this in production, for every instance.
+              warnOnce(
+                'auto-no-leaves',
+                'auto strategy: 0 leaves found, falling back to root-only. ' +
                 'Possible causes: React 19 / Hermes stripped fiber internals, ' +
                 'hermetic bundle, or test environment. ' +
                 'Pass measureStrategy: "root-only" to silence this warning.'
