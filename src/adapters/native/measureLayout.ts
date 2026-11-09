@@ -84,6 +84,7 @@ function buildRootOnlyHook(
   boneStyle?: BoneStyleOverride,
   maxDepth = 20,
   exclude: string[] = [],
+  skipIds: string[] = [],
 ): MeasureLayoutResult {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rootLayoutRef = useRef<MeasuredLayout | null>(null);
@@ -150,7 +151,7 @@ function buildRootOnlyHook(
       const instance = warmupRef.current;
       if (instance) {
         measureRootPageXY(instance, (rootPageX, rootPageY) => {
-          measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth, exclude })
+          measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth, exclude, skipIds })
             .then(layouts => {
               if (layouts && layouts.length > 0) {
                 scoringLeavesRef.current = layouts.map(l => ({
@@ -166,7 +167,7 @@ function buildRootOnlyHook(
 
       rebuildTree();
     },
-    [rebuildTree, maxDepth, exclude]
+    [rebuildTree, maxDepth, exclude, skipIds]
   );
 
   const createChildLayoutHandler = useCallback(
@@ -239,6 +240,7 @@ function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
 interface AutoMeasureOptions {
   maxDepth: number;
   exclude: string[];
+  skipIds: string[];
 }
 
 function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
@@ -325,6 +327,7 @@ export interface UseMeasureLayoutOptions {
   maxDepth: number;
   exclude: string[];
   boneStyle?: BoneStyleOverride;
+  skipIds?: string[];
 }
 
 /**
@@ -344,10 +347,10 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
   // The strategy must not change after mount (it's derived from static options).
   if (opts.strategy === 'auto') {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude });
+    return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude, skipIds: opts.skipIds ?? [] });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude);
+  return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude, opts.skipIds ?? []);
 }
 
 export { detectElementType };

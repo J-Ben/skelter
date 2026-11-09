@@ -91,6 +91,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   exclude: [],
   mockProps: {},
   staticBones: [],
+  skipIds: [],
 };
 
 /**
@@ -209,6 +210,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     maxDepth: hocOptions.maxDepth,
     exclude: hocOptions.exclude,
     boneStyle: hocOptions.boneStyle,
+    skipIds: hocOptions.skipIds,
   });
 
   const resolvedIsLoading = isLoading || (enabled && (forceLoading || forcedIds.has(id)));
@@ -245,7 +247,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     if (!instance) return;
 
     const measure = (rootPageX: number, rootPageY: number) => {
-      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [] })
+      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [], skipIds: hocOptions.skipIds })
         .then(layouts => {
           if (layouts && layouts.length > 0 && boneTree) {
             const realLeaves = layouts.map(l => ({

@@ -116,3 +116,26 @@ describe('measureFiberLeaves — walk stays inside the measured root', () => {
     expect(layouts).toHaveLength(5);
   });
 });
+
+describe('measureFiberLeaves — skipIds (v4)', () => {
+  it('collects a skipped container as one solid bone and ignores its children', async () => {
+    const layouts = await measureFiberLeaves(instanceOf(cardTree({ nativeID: 'badge' })), 0, 0, {
+      ...OPTIONS,
+      skipIds: ['badge'],
+    });
+    expect(rects(layouts)).toContainEqual([12, 64, 70, 24]);
+    expect(rects(layouts)).not.toContainEqual([20, 68, 54, 16]);
+    expect(layouts).toHaveLength(4);
+    const badge = layouts!.find(l => l.width === 70)!;
+    expect(badge.isSkeletonBox).toBeUndefined();
+    expect(badge.borderRadius).toBe(12);
+  });
+
+  it('changes nothing when no element carries the id', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const layouts = await measureFiberLeaves(instanceOf(cardTree()), 0, 0, { ...OPTIONS, skipIds: ['missing'] });
+    expect(layouts).toHaveLength(4);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"missing"'));
+    warn.mockRestore();
+  });
+});

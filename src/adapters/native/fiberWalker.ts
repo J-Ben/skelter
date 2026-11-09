@@ -12,6 +12,7 @@
 import { StyleSheet, UIManager } from 'react-native';
 import type { MeasuredLayout, ElementType } from '../../core/types';
 import { parseParagraph, normalizeTextAlign } from '../../core/constants';
+import { warnOnce } from '../../core/dev';
 import type { ParagraphAlign } from '../../core/types';
 
 // ─── Leaf registry ───────────────────────────────────────────────────────────
@@ -159,15 +160,24 @@ function extractTextContent(children: unknown): string {
  * walk (`withSiblings: false`) : the root's siblings live outside the measured
  * component (e.g. the hidden real-content View next to the warmup View).
  */
+interface WalkContext {
+  maxDepth: number;
+  excludeSet: Set<string>;
+  /** nativeIDs collected as one solid bone, without descending into them */
+  skipIds: Set<string>;
+  /** skipIds actually met during the walk (for dev warnings) */
+  matchedSkipIds: Set<string>;
+  out: CollectedNode[];
+}
+
 function walkFiber(
   fiber: Record<string, unknown>,
   depth: number,
-  maxDepth: number,
-  excludeSet: Set<string>,
-  out: CollectedNode[],
+  ctx: WalkContext,
   withSiblings = true
 ): void {
-  if (!fiber || depth > maxDepth) return;
+  if (!fiber || depth > ctx.maxDepth) return;
+  const { excludeSet, out } = ctx;
   const sibling = withSiblings ? (fiber.sibling as Record<string, unknown> | null) : null;
 
   const fiberType = fiber.type;
@@ -176,7 +186,7 @@ function walkFiber(
 
   if (excludeSet.has(typeName)) {
     // Excluded : traverse siblings but not children
-    if (sibling) walkFiber(sibling, depth, maxDepth, excludeSet, out);
+    if (sibling) walkFiber(sibling, depth, ctx);
     return;
   }
 
@@ -194,16 +204,21 @@ function walkFiber(
     const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
     // SkeletonIgnore: skip this node and all its descendants
     if (props.testID === '__skl_ignore__') {
-      if (sibling) walkFiber(sibling, depth, maxDepth, excludeSet, out);
+      if (sibling) walkFiber(sibling, depth, ctx);
       return;
     }
     const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
     const paragraph = parseParagraph(props.testID as string | undefined);
     const paragraphLines = paragraph?.lines;
     const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
-    const shouldCollect = isContent || isSkeletonBox || paragraphLines !== undefined || !hasAnyHostDescendant(fiber, excludeSet);
-    // Paragraph wrapper: collected as one block, children skipped below.
-    skipChildren = paragraphLines !== undefined;
+    // skipIds: the node itself becomes one solid bone (badge, chip…) and its
+    // children are not walked, so a small inner Text no longer gets its own bone.
+    const nativeID = props.nativeID as string | undefined;
+    const isSkipped = nativeID !== undefined && ctx.skipIds.has(nativeID);
+    if (isSkipped) ctx.matchedSkipIds.add(nativeID!);
+    const shouldCollect = isContent || isSkeletonBox || isSkipped || paragraphLines !== undefined || !hasAnyHostDescendant(fiber, excludeSet);
+    // Paragraph wrapper / skipped node: collected as one block, children skipped below.
+    skipChildren = paragraphLines !== undefined || isSkipped;
 
     if (shouldCollect) {
       const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
@@ -259,12 +274,12 @@ function walkFiber(
   }
 
   // Recurse into children (depth + 1) then siblings (same depth).
-  // Paragraph wrappers skip children : the block is already collected as one.
+  // Paragraph wrappers and skipIds nodes skip children : already collected as one block.
   if (fiber.child && !skipChildren) {
-    walkFiber(fiber.child as Record<string, unknown>, depth + 1, maxDepth, excludeSet, out);
+    walkFiber(fiber.child as Record<string, unknown>, depth + 1, ctx);
   }
   if (sibling) {
-    walkFiber(sibling, depth, maxDepth, excludeSet, out);
+    walkFiber(sibling, depth, ctx);
   }
 }
 
@@ -323,6 +338,8 @@ function measureNode(node: CollectedNode, callback: MeasureCallback): void {
 export interface FiberWalkOptions {
   maxDepth: number;
   exclude: string[];
+  /** nativeIDs collected as a single solid bone, children ignored (v4) */
+  skipIds?: string[];
 }
 
 /**
@@ -353,13 +370,25 @@ export function measureFiberLeaves(
     }
 
     const collected: CollectedNode[] = [];
-    const excludeSet = new Set(options.exclude);
+    const ctx: WalkContext = {
+      maxDepth: options.maxDepth,
+      excludeSet: new Set(options.exclude),
+      skipIds: new Set(options.skipIds ?? []),
+      matchedSkipIds: new Set(),
+      out: collected,
+    };
 
     try {
-      walkFiber(fiber as Record<string, unknown>, 0, options.maxDepth, excludeSet, collected, false);
+      walkFiber(fiber as Record<string, unknown>, 0, ctx, false);
     } catch {
       resolve(null);
       return;
+    }
+
+    for (const id of ctx.skipIds) {
+      if (!ctx.matchedSkipIds.has(id)) {
+        warnOnce(`skipIds:${id}`, `skipIds: no element with nativeID "${id}" was found in the measured component.`);
+      }
     }
 
 
