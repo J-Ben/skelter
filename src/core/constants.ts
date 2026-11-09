@@ -97,7 +97,10 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   speed: 'normal',
   borderRadius: 4,
   direction: 'ltr',
-  minDuration: 0,
+  // Non-zero since v4 : with 0, a fast response (cache, small page, local
+  // network) turned the skeleton on and off before it was ever seen, or showed
+  // it for a single frame. 500 ms is the value validated in production.
+  minDuration: 500,
   disabled: false,
   shatterConfig: {
     gridSize: 0,
