@@ -11,7 +11,7 @@ import React, {
 import { useDevTools } from '../../context/DevToolsContext';
 import { View, Text, Pressable, Animated, Easing, AccessibilityInfo, UIManager } from 'react-native';
 import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
-import { resolveSpeed } from '../../core/constants';
+import { resolveSpeed, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
 import { generateBones } from '../../core/generateBones';
@@ -377,56 +377,50 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSkeletonVisible]);
 
-  // Track if skeleton was visible AND trigger exit animation on transition.
-  const wasSkeletonVisibleRef = useRef(false);
+  // Exit animation (visible → hidden).
+  // The exiting state is entered DURING RENDER, in the same pass where
+  // isSkeletonVisible turns false. Entering it from an effect (v3) let one frame
+  // be painted with the real content and no bones, after which the bones came
+  // back for their fade : one flash per instance, very visible when a whole
+  // list resolves at once.
+  const shouldAnimateExit = mergedConfig.exit !== 'none' && !reduceMotion;
+  const [prevSkeletonVisible, setPrevSkeletonVisible] = useState(isSkeletonVisible);
+  if (prevSkeletonVisible !== isSkeletonVisible) {
+    setPrevSkeletonVisible(isSkeletonVisible);
+    if (!isSkeletonVisible && shouldAnimateExit && !isExiting) setIsExiting(true);
+    // Loading again while the exit plays : cancel the exit, show bones normally.
+    if (isSkeletonVisible && isExiting) setIsExiting(false);
+  }
 
   useEffect(() => {
-    const wasVisible = wasSkeletonVisibleRef.current;
-    const isNowVisible = isSkeletonVisible;
+    if (!isExiting) return;
+    const exitType = mergedConfig.exit;
 
-    // Transition from visible → hidden: trigger exit animation.
-    if (wasVisible && !isNowVisible && !isExiting) {
-      const exitType = mergedConfig.exit;
-      const shouldAnimateExit = exitType !== 'none' && !reduceMotion;
+    // Calculate target transform values based on exit type.
+    let targetY = 0, targetX = 0;
+    if (exitType === 'fadeUp') targetY = -20;
+    else if (exitType === 'fadeDown') targetY = 20;
+    else if (exitType === 'fadeLeft') targetX = -20;
+    else if (exitType === 'fadeRight') targetX = 20;
 
-      if (shouldAnimateExit) {
-        setIsExiting(true);
+    // Run opacity + translate animations in parallel.
+    const anim = Animated.parallel([
+      Animated.timing(exitOpacityRef, { toValue: 0, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
+      Animated.timing(exitTranslateYRef, { toValue: targetY, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
+      Animated.timing(exitTranslateXRef, { toValue: targetX, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
+    ]);
+    anim.start(({ finished }) => {
+      if (finished) setIsExiting(false);
+    });
 
-        // Calculate target transform values based on exit type.
-        let targetY = 0, targetX = 0;
-        if (exitType === 'fadeUp') targetY = -20;
-        else if (exitType === 'fadeDown') targetY = 20;
-        else if (exitType === 'fadeLeft') targetX = -20;
-        else if (exitType === 'fadeRight') targetX = 20;
-
-        // Run opacity + translate animations in parallel.
-        Animated.parallel([
-          Animated.timing(exitOpacityRef, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(exitTranslateYRef, {
-            toValue: targetY,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(exitTranslateXRef, {
-            toValue: targetX,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          setIsExiting(false);
-          exitOpacityRef.setValue(1);
-          exitTranslateYRef.setValue(0);
-          exitTranslateXRef.setValue(0);
-        });
-      }
-    }
-
-    wasSkeletonVisibleRef.current = isNowVisible;
-  }, [isSkeletonVisible, mergedConfig.exit, reduceMotion, isExiting, exitOpacityRef, exitTranslateYRef, exitTranslateXRef]);
+    return () => {
+      anim.stop();
+      exitOpacityRef.setValue(1);
+      exitTranslateYRef.setValue(0);
+      exitTranslateXRef.setValue(0);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExiting]);
 
   // Single animation loop : drives all bones from this component.
   useEffect(() => {
@@ -534,12 +528,20 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </Animated.View>
       )}
 
-      {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts. Visible after. */}
+      {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts.
+          During the exit it stays hidden unless revealOnExit (documented default: content appears
+          only after the exit completes — v3 ignored this on native and showed both layers). */}
       <View
         ref={realContentRef}
         collapsable={false}
-        style={isSkeletonVisible && !isExiting ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 } : undefined}
-        pointerEvents={isSkeletonVisible && !isExiting ? 'none' : 'auto'}
+        style={
+          isSkeletonVisible && !isExiting
+            ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }
+            : isExiting && !mergedConfig.revealOnExit
+              ? { opacity: 0 }
+              : undefined
+        }
+        pointerEvents={isSkeletonVisible || (isExiting && !mergedConfig.revealOnExit) ? 'none' : 'auto'}
       >
         <Component {...componentProps} />
       </View>
