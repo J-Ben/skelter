@@ -251,6 +251,8 @@ interface AutoMeasureOptions {
   maxDepth: number;
   exclude: string[];
   skipIds: string[];
+  skeletonRoot: boolean;
+  rootId?: string;
 }
 
 function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
@@ -338,6 +340,8 @@ export interface UseMeasureLayoutOptions {
   exclude: string[];
   boneStyle?: BoneStyleOverride;
   skipIds?: string[];
+  skeletonRoot?: boolean;
+  rootId?: string;
 }
 
 /**
@@ -357,7 +361,13 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
   // The strategy must not change after mount (it's derived from static options).
   if (opts.strategy === 'auto') {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude, skipIds: opts.skipIds ?? [] });
+    return buildAutoHook({
+      maxDepth: opts.maxDepth,
+      exclude: opts.exclude,
+      skipIds: opts.skipIds ?? [],
+      skeletonRoot: opts.skeletonRoot ?? false,
+      rootId: opts.rootId,
+    });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude, opts.skipIds ?? []);

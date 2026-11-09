@@ -139,3 +139,71 @@ describe('measureFiberLeaves — skipIds (v4)', () => {
     warn.mockRestore();
   });
 });
+
+describe('measureFiberLeaves — skeletonRoot (v4)', () => {
+  it('turns the first host element of the component into a box, children still measured', async () => {
+    const layouts = await measureFiberLeaves(instanceOf(cardTree()), 0, 0, { ...OPTIONS, skeletonRoot: true });
+    const boxes = layouts!.filter(l => l.isSkeletonBox);
+    expect(boxes.map(b => [b.x, b.y, b.width, b.height])).toEqual([[0, 0, 300, 100]]);
+    expect(boxes[0].borderRadius).toBe(12);
+    expect(layouts).toHaveLength(5);
+  });
+
+  it('does not change anything when the root is already a SkeletonBox', async () => {
+    const tree = host('RCTView', { x: 0, y: 0, width: 300, height: 60 }, {}, [
+      host('RCTView', { x: 0, y: 0, width: 300, height: 60 }, { testID: '__skl_box__' }, [
+        host('RCTText', { x: 10, y: 10, width: 100, height: 20 }, { children: 'a' }),
+      ]),
+    ]);
+    const plain = await measureFiberLeaves(instanceOf(tree), 0, 0, OPTIONS);
+    const withRoot = await measureFiberLeaves(instanceOf(tree), 0, 0, { ...OPTIONS, skeletonRoot: true });
+    expect(withRoot).toEqual(plain);
+  });
+
+  it('marks the host View under a Pressable-like composite', async () => {
+    const tree = host('RCTView', { x: 0, y: 0, width: 300, height: 60 }, {}, [
+      composite('Pressable', [
+        host('RCTView', { x: 0, y: 0, width: 300, height: 60 }, { style: { borderRadius: 8 } }, [
+          host('RCTText', { x: 10, y: 10, width: 100, height: 20 }, { children: 'a' }),
+        ]),
+      ]),
+    ]);
+    const layouts = await measureFiberLeaves(instanceOf(tree), 0, 0, { ...OPTIONS, skeletonRoot: true });
+    expect(layouts!.filter(l => l.isSkeletonBox)).toHaveLength(1);
+  });
+});
+
+describe('measureFiberLeaves — rootId (v4)', () => {
+  /** Section wrapper (spacing + title) around the actual card. */
+  function sectionTree() {
+    return host('RCTView', { x: 0, y: 0, width: 320, height: 140 }, {}, [
+      host('RCTView', { x: 0, y: 0, width: 320, height: 140 }, { style: { padding: 8 } }, [
+        host('RCTText', { x: 8, y: 8, width: 150, height: 14 }, { children: 'Section' }),
+        host('RCTView', { x: 8, y: 30, width: 304, height: 100 }, { nativeID: 'card-body', style: { borderRadius: 12 } }, [
+          host('RCTText', { x: 20, y: 42, width: 120, height: 20 }, { children: 'Client 1' }),
+        ]),
+      ]),
+    ]);
+  }
+
+  it('with skeletonRoot, boxes the rootId element instead of the outer wrapper', async () => {
+    const layouts = await measureFiberLeaves(instanceOf(sectionTree()), 0, 0, {
+      ...OPTIONS, skeletonRoot: true, rootId: 'card-body',
+    });
+    const boxes = layouts!.filter(l => l.isSkeletonBox);
+    expect(boxes.map(b => [b.x, b.y, b.width, b.height])).toEqual([[8, 30, 304, 100]]);
+  });
+
+  it('only walks the rootId subtree, positions stay relative to the whole component', async () => {
+    const layouts = await measureFiberLeaves(instanceOf(sectionTree()), 0, 0, { ...OPTIONS, rootId: 'card-body' });
+    expect(rects(layouts)).toEqual([[20, 42, 120, 20]]);
+  });
+
+  it('falls back to the whole component when the id is unknown', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const layouts = await measureFiberLeaves(instanceOf(sectionTree()), 0, 0, { ...OPTIONS, rootId: 'nope' });
+    expect(layouts).toHaveLength(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"nope"'));
+    warn.mockRestore();
+  });
+});

@@ -82,7 +82,10 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
-type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData'>> & { boneStyle?: BoneStyleOverride };
+type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData' | 'rootId'>> & {
+  boneStyle?: BoneStyleOverride;
+  rootId?: string;
+};
 
 /** Default WithSkeletonOptions applied when no second argument is passed. */
 const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
@@ -92,6 +95,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   mockProps: {},
   staticBones: [],
   skipIds: [],
+  skeletonRoot: false,
 };
 
 /**
@@ -211,6 +215,8 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     exclude: hocOptions.exclude,
     boneStyle: hocOptions.boneStyle,
     skipIds: hocOptions.skipIds,
+    skeletonRoot: hocOptions.skeletonRoot,
+    rootId: hocOptions.rootId,
   });
 
   const resolvedIsLoading = isLoading || (enabled && (forceLoading || forcedIds.has(id)));
@@ -247,7 +253,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     if (!instance) return;
 
     const measure = (rootPageX: number, rootPageY: number) => {
-      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [], skipIds: hocOptions.skipIds })
+      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [], skipIds: hocOptions.skipIds, skeletonRoot: hocOptions.skeletonRoot, rootId: hocOptions.rootId })
         .then(layouts => {
           if (layouts && layouts.length > 0 && boneTree) {
             const realLeaves = layouts.map(l => ({
