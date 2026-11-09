@@ -100,3 +100,19 @@ describe('measureFiberLeaves — v3 behaviour (golden)', () => {
     await expect(measureFiberLeaves({}, 0, 0, OPTIONS)).resolves.toBeNull();
   });
 });
+
+describe('measureFiberLeaves — walk stays inside the measured root', () => {
+  /**
+   * The warmup View is rendered next to the hidden real-content View inside
+   * the HOC. Walking from the warmup fiber must not leak into that sibling,
+   * or every leaf of the real content is measured a second time.
+   */
+  it('does not collect leaves from the siblings of the root fiber', async () => {
+    const warmup = cardTree({ testID: '__skl_box__' });
+    const realContent = cardTree({ testID: '__skl_box__' });
+    warmup.sibling = realContent;
+    const layouts = await measureFiberLeaves(instanceOf(warmup), 0, 0, OPTIONS);
+    expect(layouts!.filter(l => l.isSkeletonBox)).toHaveLength(1);
+    expect(layouts).toHaveLength(5);
+  });
+});
