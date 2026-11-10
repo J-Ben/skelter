@@ -1,5 +1,11 @@
 # skelter
 
+## 4.0.0-next.1
+
+### Patch Changes
+
+- `react-zero-skeleton/package.json` is now exported (tools reading the package version no longer fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`), and the `types` condition is listed first in `exports` so TypeScript resolves it with every `moduleResolution`.
+
 ## 4.0.0-next.0
 
 ### Major Changes
