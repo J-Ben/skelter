@@ -94,10 +94,17 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   animation: 'pulse',
   color: '#E0E0E0',
   highlightColor: '#F5F5F5',
+  // '' = same as color. Boxes are drawn translucent behind their content bones.
+  boxColor: '',
+  boxOpacity: 0.25,
+  boxAnimated: false,
   speed: 'normal',
   borderRadius: 4,
   direction: 'ltr',
-  minDuration: 0,
+  // Non-zero since v4 : with 0, a fast response (cache, small page, local
+  // network) turned the skeleton on and off before it was ever seen, or showed
+  // it for a single frame. 500 ms is the value validated in production.
+  minDuration: 500,
   disabled: false,
   shatterConfig: {
     gridSize: 0,
@@ -111,11 +118,43 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   maxBonesInList: 0,
   enter: 'none' as const,
   exit: 'fade' as const,
-  revealOnExit: false,
+  revealOnExit: true,
+  exitDuration: SKELETON_EXIT_MS,
   cascade: 0,
   conditions: {},
   adaptive: [],
 };
+
+/**
+ * Background color and opacity of a bone : container boxes use boxColor /
+ * boxOpacity (boxColor falls back to color), every other bone uses color and
+ * its own opacity override, if any.
+ */
+export function resolveBoneFill(
+  bone: { isBox?: boolean; opacity?: number },
+  config: Pick<Required<SkeletonConfig>, 'color' | 'boxColor' | 'boxOpacity'>
+): { backgroundColor: string; opacity?: number } {
+  if (bone.isBox) {
+    return { backgroundColor: config.boxColor || config.color, opacity: config.boxOpacity };
+  }
+  return {
+    backgroundColor: config.color,
+    ...(bone.opacity != null && bone.opacity < 1 ? { opacity: bone.opacity } : {}),
+  };
+}
+
+/**
+ * Whether a bone runs the configured animation. Container boxes are still
+ * unless boxAnimated is set (and never when declared static); other bones
+ * animate unless flagged static.
+ */
+export function isBoneAnimated(
+  bone: { isBox?: boolean; boxStatic?: boolean; isStatic?: boolean },
+  config: Pick<Required<SkeletonConfig>, 'boxAnimated'>
+): boolean {
+  if (bone.isBox) return config.boxAnimated && !bone.boxStatic;
+  return !bone.isStatic;
+}
 
 /**
  * Resolves an AnimationSpeed value to a numeric multiplier.

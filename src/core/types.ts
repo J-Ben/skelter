@@ -25,6 +25,13 @@ export interface Bone {
   isParagraph?: boolean;
   /** When true, the bone is rendered without animation (static placeholder). */
   isStatic?: boolean;
+  /**
+   * True for the background of a SkeletonBox (or skeletonRoot) container.
+   * Renderers paint it with boxColor / boxOpacity instead of color / opacity.
+   */
+  isBox?: boolean;
+  /** True when the SkeletonBox was declared `static`: never animated, even with boxAnimated. */
+  boxStatic?: boolean;
 }
 
 /**
@@ -183,6 +190,22 @@ export interface SkeletonConfig {
   /** Highlight color used during animation */
   highlightColor?: string;
   /**
+   * Background color of SkeletonBox / skeletonRoot containers (v4).
+   * Default: '' — same as `color`.
+   */
+  boxColor?: string;
+  /**
+   * Opacity (0–1) of SkeletonBox / skeletonRoot container backgrounds (v4).
+   * Default: 0.25.
+   */
+  boxOpacity?: number;
+  /**
+   * Whether SkeletonBox / skeletonRoot backgrounds run the skeleton animation
+   * (v4). Default: false — the container stays still, only the content bones
+   * animate. A `<SkeletonBox static>` never animates.
+   */
+  boxAnimated?: boolean;
+  /**
    * Animation speed : named preset or numeric multiplier.
    * 'slow' | 'normal' | 'rapid' or a custom number (1.0 = normal).
    */
@@ -191,7 +214,10 @@ export interface SkeletonConfig {
   borderRadius?: number;
   /** Animation direction : useful for RTL layouts */
   direction?: 'ltr' | 'rtl';
-  /** Minimum duration in ms the skeleton stays visible */
+  /**
+   * Minimum duration in ms the skeleton stays visible once shown.
+   * Default: 500 (v4; was 0 in v1–v3). Set 0 to hide it as soon as data arrives.
+   */
   minDuration?: number;
   /** If true, skeleton is never displayed regardless of isLoading */
   disabled?: boolean;
@@ -203,9 +229,14 @@ export interface SkeletonConfig {
   /**
    * When true, real content becomes visible underneath the skeleton
    * while the exit animation plays — skeleton fades out revealing content.
-   * Default: false (content appears only after exit completes).
+   * Default: true (cross-fade : content fades in while the bones fade out).
+   * Set false to show content only after the exit completes.
    */
   revealOnExit?: boolean;
+  /**
+   * Duration of the exit animation, in ms. Default: 300.
+   */
+  exitDuration?: number;
   /**
    * Exit animation played when the skeleton disappears.
    * Default: 'fade' (300 ms opacity fade-out).
@@ -379,7 +410,7 @@ export interface StaticBone {
  * Options for withSkeleton (second argument).
  * All fields are optional : sensible defaults are applied.
  */
-export interface WithSkeletonOptions {
+export interface WithSkeletonOptions<P = Record<string, unknown>> {
   /**
    * 'auto'      → one bone per leaf element (default)
    * 'root-only' → single root block (v0.2 compat)
@@ -388,7 +419,7 @@ export interface WithSkeletonOptions {
   /**
    * Maximum depth of the fiber tree walk.
    * Prevents runaway traversal on deeply nested components.
-   * Default: 8
+   * Default: 20
    */
   maxDepth?: number;
   /**
@@ -417,8 +448,62 @@ export interface WithSkeletonOptions {
    *   withSkeleton(ArticleCard, {
    *     mockProps: { article: { title: 'Lorem ipsum', image: null } }
    *   })
+   *
+   * Alias of `mockData`, kept for backward compatibility. When both are set,
+   * `mockData` wins.
    */
   mockProps?: Record<string, unknown>;
+  /**
+   * Realistic values rendered during the invisible measurement pass, so the
+   * skeleton gets the dimensions of real content before data arrives.
+   * Same behaviour as `mockProps`, typed against the wrapped component's props.
+   *
+   * The mock is spread OVER the real props for the measurement pass only:
+   * a key present in `mockData` always wins over the real prop of the same name.
+   *
+   * @example
+   * withSkeleton(MyCard, {
+   *   mockData: { title: 'Jean VALJEAN', subtitle: 'Réalisé le 12/08/2026' },
+   * })
+   */
+  mockData?: Partial<P>;
+  /**
+   * nativeIDs (web: `id` attributes) of elements that become ONE solid bone,
+   * without descending into them (v4).
+   *
+   * Typical use: a badge or chip whose container has a visual shape. Without
+   * it, only the inner Text is measured and the skeleton shows a small
+   * rectangle lost in the middle of the badge.
+   *
+   * Put the id on the CONTAINER you want greyed out, not on its inner Text.
+   *
+   * @example
+   * // <View nativeID="status-badge" style={styles.badge}><Text>Payée</Text></View>
+   * withSkeleton(InvoiceCard, { skipIds: ['status-badge'] })
+   */
+  skipIds?: string[];
+  /**
+   * Treats the component's root element as an implicit SkeletonBox (v4): while
+   * loading, the card frame shows as a translucent static bone and the bones of
+   * its content are drawn on top. Removes the need for a SkeletonBox around
+   * the root, including when the root is a Pressable / TouchableOpacity.
+   *
+   * The root is the first element rendered by the component, or the `rootId`
+   * element when set. A root that already is a SkeletonBox is left as is.
+   */
+  skeletonRoot?: boolean;
+  /**
+   * nativeID (web: `id`) of the element to use as the skeleton root instead of
+   * the first rendered element (v4). Only that element's subtree is measured;
+   * the wrapper around it keeps its space but gets no bones. With
+   * `skeletonRoot`, this element is the one turned into a box.
+   *
+   * Typical use: a card inside an outer spacing wrapper you don't want greyed.
+   *
+   * @example
+   * withSkeleton(Section, { skeletonRoot: true, rootId: 'card-body' })
+   */
+  rootId?: string;
   /**
    * Predefined bones : bypasses layout measurement entirely.
    * No warmup render, no blank frame, no ResizeObserver.

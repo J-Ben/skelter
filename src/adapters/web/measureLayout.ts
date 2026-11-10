@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import type { RefObject } from 'react';
 import { generateBones } from '../../core/generateBones';
 import { parseParagraph, normalizeTextAlign } from '../../core/constants';
+import { warnOnce } from '../../core/dev';
 import type { BoneTree, ElementType, Bone } from '../../core/types';
 
 /**
@@ -47,7 +48,23 @@ function readBorderRadius(element: Element): number {
     return isNaN(parsed) ? 0 : parsed;
 }
 
-function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
+/** v4 measurement options shared with the React Native adapter. */
+export interface WebMeasureOptions {
+    /** `id` attributes collected as one solid bone, children ignored */
+    skipIds?: string[];
+    /** Treat the root element as an implicit SkeletonBox */
+    skeletonRoot?: boolean;
+    /** `id` of the element used as the skeleton root */
+    rootId?: string;
+}
+
+interface BuildContext {
+    skipIds: Set<string>;
+    /** Element treated as an implicit SkeletonBox (skeletonRoot) */
+    rootBox: Element | null;
+}
+
+function buildBoneTree(element: Element, rootRect: DOMRect, ctx: BuildContext): BoneTree {
     const rect = element.getBoundingClientRect();
     const testid = element.getAttribute('data-testid');
     const paragraph = parseParagraph(testid);
@@ -65,7 +82,7 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
         // Paragraph wrappers are split into text lines, so type them as text.
         type: paragraphLines !== undefined ? ('text' as ElementType) : detectElementType(element),
         borderRadius: readBorderRadius(element),
-        isSkeletonBox: testid === '__skl_box__' || testid === '__skl_box_static__',
+        isSkeletonBox: testid === '__skl_box__' || testid === '__skl_box_static__' || element === ctx.rootBox,
         isSkeletonBoxStatic: testid === '__skl_box_static__',
         isSkeletonIgnore: testid === '__skl_ignore__',
         paragraphLines,
@@ -73,12 +90,14 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
         paragraphWords: paragraph?.words,
     };
 
-    // Paragraph wrapper: collected as one block, inner text must not add bones.
+    // Paragraph wrapper or skipIds element: collected as one block, children
+    // ignored (no children → generateBones treats it as a leaf bone).
+    const isSkipped = element.id !== '' && ctx.skipIds.has(element.id);
     const children: BoneTree[] = [];
-    if (paragraphLines === undefined) {
+    if (paragraphLines === undefined && !isSkipped) {
         for (const child of Array.from(element.children)) {
             if (child instanceof HTMLElement) {
-                children.push(buildBoneTree(child, rootRect));
+                children.push(buildBoneTree(child, rootRect, ctx));
             }
         }
     }
@@ -97,7 +116,11 @@ function buildBoneTree(element: Element, rootRect: DOMRect): BoneTree {
  *
  * @returns WebMeasureLayoutResult with boneTree, rootRef and isLayoutCaptured
  */
-export function useMeasureLayout(): WebMeasureLayoutResult {
+export function useMeasureLayout(options: WebMeasureOptions = {}): WebMeasureLayoutResult {
+    // Options come from withSkeleton's static second argument : stable for the
+    // lifetime of the component, so reading them through a ref is enough.
+    const optionsRef = useRef(options);
+    optionsRef.current = options;
     const rootRef = useRef<HTMLElement>(null);
     const [boneTree, setBoneTree] = useState<BoneTree | null>(null);
     const [isLayoutCaptured, setIsLayoutCaptured] = useState(false);
@@ -109,7 +132,20 @@ export function useMeasureLayout(): WebMeasureLayoutResult {
         const rect = element.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
-        const tree = buildBoneTree(element, rect);
+        const { skipIds = [], skeletonRoot = false, rootId } = optionsRef.current;
+        // rootId: only that element's subtree gets bones; the root keeps the
+        // full component size so the wrapper around it keeps its space.
+        const target = rootId ? element.querySelector(`[id="${rootId}"]`) : null;
+        if (rootId && !target) {
+            warnOnce(`rootId:${rootId}`, `rootId: no element with id "${rootId}" was found; using the whole component.`);
+        }
+        const start = target ?? element.firstElementChild;
+        const ctx: BuildContext = {
+            skipIds: new Set(skipIds),
+            rootBox: skeletonRoot ? start : null,
+        };
+        const full = buildBoneTree(element, rect, ctx);
+        const tree = target ? { layout: full.layout, children: [buildBoneTree(target, rect, ctx)] } : full;
         setBoneTree(tree);
         setIsLayoutCaptured(true);
     }, []);

@@ -231,7 +231,7 @@ function Panel({
   const T = usePanelTheme(panelTheme);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [size, setSize] = useState<'compact' | 'normal' | 'tall'>('normal');
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const rowOffsetsRef = useRef<Map<string, number>>(new Map());
 
   const listHeight = size === 'compact' ? 120 : size === 'tall' ? SCREEN_H * 0.45 : SCREEN_H * 0.28;

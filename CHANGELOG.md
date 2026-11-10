@@ -1,5 +1,50 @@
 # skelter
 
+## 4.0.0-next.2
+
+### Minor Changes
+
+- `revealOnExit` is now a real cross-fade: the content fades in (0 → 1) while the bones fade out, instead of appearing at full opacity under bones that are still opaque (text wider than its bone showed around it at the start of the exit). New `exitDuration` option (SkeletonTheme or `skeletonConfig`, default 300 ms).
+
+## 4.0.0-next.1
+
+### Patch Changes
+
+- `react-zero-skeleton/package.json` is now exported (tools reading the package version no longer fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`), and the `types` condition is listed first in `exports` so TypeScript resolves it with every `moduleResolution`.
+
+## 4.0.0-next.0
+
+### Major Changes
+
+- 7554ca3: v4: advanced skeleton control and React Native rendering fixes.
+
+  **New options (opt-in, no API removed)**
+
+  - `skeletonRoot`: the component's root element becomes an implicit `SkeletonBox` (translucent card frame, content bones on top), including when the root is a `Pressable` / `TouchableOpacity`. No `SkeletonBox` wrapper needed.
+  - `rootId`: pick the element (`nativeID`, web `id`) used as the skeleton root; only its subtree is measured, the wrapper keeps its space.
+  - `skipIds`: elements (`nativeID`, web `id`) rendered as one solid bone without walking into them — badges, chips.
+  - `boxColor`, `boxOpacity`, `boxAnimated` (SkeletonTheme or `skeletonConfig`): color, opacity (default 0.25) and animation (default off) of `SkeletonBox` / `skeletonRoot` backgrounds. `<SkeletonBox static>` now actually stays still.
+  - `mockData`: typed alias of `mockProps` (`WithSkeletonOptions<P>` is now generic). `mockProps` keeps working; `mockData` wins when both are set.
+
+  **Fixes (React Native)**
+
+  - Removed the debug `console.log('[EXIT-TRIGGERED-DIRECT]')` shipped in the 3.0.0 bundle.
+  - No more flash when skeletons exit: the exit starts in the same render (no painted frame with content and no bones), and `revealOnExit: false` is honoured.
+  - `enter: 'none'` is honoured: no blank frames at the start of each load.
+  - FlatList detection works (it never did in published builds): `maxBonesInList` and the `shatter` → `pulse` fallback now apply in lists.
+  - Nested `SkeletonBox`: content is attached to its innermost box, never drawn under it.
+  - The fiber walk no longer leaves the measured root.
+  - `[skelter]` warnings are development-only and emitted once; unknown `rootId` / `skipIds` and an unreachable fiber tree are reported.
+  - Documented `maxDepth` default fixed (20).
+
+  **Breaking changes (defaults only)**
+
+  - `minDuration` defaults to `500` ms (was `0`). Set `minDuration: 0` for the v3 behaviour.
+  - React Native: skeletons no longer fade in by default (`enter: 'none'` is now respected). Set `enter: 'fade'` for the v3 look.
+  - React Native: lists no longer force `measureStrategy: 'root-only'` (the rule never ran because detection was broken). Pass `measureStrategy: 'root-only'` for one block per item.
+  - React Native: box backgrounds no longer animate by default (as on web). Set `boxAnimated: true` to animate them.
+  - `revealOnExit` defaults to `true`: real content fades in under the fading skeleton (cross-fade) instead of appearing after the exit. Set `revealOnExit: false` to show content only once the exit ends (now honoured on React Native too). No effect with `exit: 'none'`.
+
 ## 3.0.0
 
 ### Major Changes

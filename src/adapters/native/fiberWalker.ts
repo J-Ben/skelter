@@ -12,6 +12,7 @@
 import { StyleSheet, UIManager } from 'react-native';
 import type { MeasuredLayout, ElementType } from '../../core/types';
 import { parseParagraph, normalizeTextAlign } from '../../core/constants';
+import { warnOnce } from '../../core/dev';
 import type { ParagraphAlign } from '../../core/types';
 
 // ─── Leaf registry ───────────────────────────────────────────────────────────
@@ -155,16 +156,31 @@ function extractTextContent(children: unknown): string {
 /**
  * Depth-first walk of the Fiber tree rooted at `fiber`.
  * Collects host component fibers (string type) that are leaf elements.
- * Recurses into siblings at the same depth level.
+ * Recurses into siblings at the same depth level, except for the root of the
+ * walk (`withSiblings: false`) : the root's siblings live outside the measured
+ * component (e.g. the hidden real-content View next to the warmup View).
  */
+interface WalkContext {
+  maxDepth: number;
+  excludeSet: Set<string>;
+  /** nativeIDs collected as one solid bone, without descending into them */
+  skipIds: Set<string>;
+  /** skipIds actually met during the walk (for dev warnings) */
+  matchedSkipIds: Set<string>;
+  /** Host fiber treated as an implicit SkeletonBox (skeletonRoot) */
+  rootBoxFiber: unknown;
+  out: CollectedNode[];
+}
+
 function walkFiber(
   fiber: Record<string, unknown>,
   depth: number,
-  maxDepth: number,
-  excludeSet: Set<string>,
-  out: CollectedNode[]
+  ctx: WalkContext,
+  withSiblings = true
 ): void {
-  if (!fiber || depth > maxDepth) return;
+  if (!fiber || depth > ctx.maxDepth) return;
+  const { excludeSet, out } = ctx;
+  const sibling = withSiblings ? (fiber.sibling as Record<string, unknown> | null) : null;
 
   const fiberType = fiber.type;
   const typeName = getTypeName(fiber);
@@ -172,9 +188,7 @@ function walkFiber(
 
   if (excludeSet.has(typeName)) {
     // Excluded : traverse siblings but not children
-    if (fiber.sibling) {
-      walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
-    }
+    if (sibling) walkFiber(sibling, depth, ctx);
     return;
   }
 
@@ -192,16 +206,22 @@ function walkFiber(
     const props = (fiber.memoizedProps ?? {}) as Record<string, unknown>;
     // SkeletonIgnore: skip this node and all its descendants
     if (props.testID === '__skl_ignore__') {
-      if (fiber.sibling) walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
+      if (sibling) walkFiber(sibling, depth, ctx);
       return;
     }
-    const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__';
+    const isSkeletonBox = props.testID === '__skl_box__' || props.testID === '__skl_box_static__' ||
+      fiber === ctx.rootBoxFiber;
     const paragraph = parseParagraph(props.testID as string | undefined);
     const paragraphLines = paragraph?.lines;
     const isContent = CONTENT_COMPONENTS.has(typeName) || USER_LEAVES.has(typeName);
-    const shouldCollect = isContent || isSkeletonBox || paragraphLines !== undefined || !hasAnyHostDescendant(fiber, excludeSet);
-    // Paragraph wrapper: collected as one block, children skipped below.
-    skipChildren = paragraphLines !== undefined;
+    // skipIds: the node itself becomes one solid bone (badge, chip…) and its
+    // children are not walked, so a small inner Text no longer gets its own bone.
+    const nativeID = props.nativeID as string | undefined;
+    const isSkipped = nativeID !== undefined && ctx.skipIds.has(nativeID);
+    if (isSkipped) ctx.matchedSkipIds.add(nativeID!);
+    const shouldCollect = isContent || isSkeletonBox || isSkipped || paragraphLines !== undefined || !hasAnyHostDescendant(fiber, excludeSet);
+    // Paragraph wrapper / skipped node: collected as one block, children skipped below.
+    skipChildren = paragraphLines !== undefined || isSkipped;
 
     if (shouldCollect) {
       const stateNode = fiber.stateNode as Record<string, unknown> | number | null;
@@ -257,13 +277,34 @@ function walkFiber(
   }
 
   // Recurse into children (depth + 1) then siblings (same depth).
-  // Paragraph wrappers skip children : the block is already collected as one.
+  // Paragraph wrappers and skipIds nodes skip children : already collected as one block.
   if (fiber.child && !skipChildren) {
-    walkFiber(fiber.child as Record<string, unknown>, depth + 1, maxDepth, excludeSet, out);
+    walkFiber(fiber.child as Record<string, unknown>, depth + 1, ctx);
   }
-  if (fiber.sibling) {
-    walkFiber(fiber.sibling as Record<string, unknown>, depth, maxDepth, excludeSet, out);
+  if (sibling) {
+    walkFiber(sibling, depth, ctx);
   }
+}
+
+/**
+ * Depth-first search, inside the subtree of `fiber` (its own siblings are not
+ * visited), for the first known host fiber matching `predicate`.
+ */
+function findHostFiber(
+  fiber: Record<string, unknown>,
+  predicate: (props: Record<string, unknown>) => boolean
+): Record<string, unknown> | null {
+  let child = fiber.child as Record<string, unknown> | null;
+  while (child) {
+    const isHost = (child.tag as number) === 5 || typeof child.type === 'string';
+    if (isHost && isKnownHost(getTypeName(child)) && predicate((child.memoizedProps ?? {}) as Record<string, unknown>)) {
+      return child;
+    }
+    const found = findHostFiber(child, predicate);
+    if (found) return found;
+    child = child.sibling as Record<string, unknown> | null;
+  }
+  return null;
 }
 
 // ─── Measurement ─────────────────────────────────────────────────────────────
@@ -321,6 +362,12 @@ function measureNode(node: CollectedNode, callback: MeasureCallback): void {
 export interface FiberWalkOptions {
   maxDepth: number;
   exclude: string[];
+  /** nativeIDs collected as a single solid bone, children ignored (v4) */
+  skipIds?: string[];
+  /** Treat the component's root element as an implicit SkeletonBox (v4) */
+  skeletonRoot?: boolean;
+  /** nativeID of the element to use as the skeleton root instead of the first one (v4) */
+  rootId?: string;
 }
 
 /**
@@ -346,18 +393,54 @@ export function measureFiberLeaves(
   return new Promise(resolve => {
     const fiber = getFiber(rootInstance);
     if (!fiber) {
+      warnOnce(
+        'no-fiber',
+        'cannot reach the React fiber tree from the measured View (none of ' +
+        `${FIBER_KEYS.join(', ')} is set). React / React Native internals may have changed; ` +
+        'skeletons fall back to a single block per component.'
+      );
       resolve(null);
       return;
     }
 
     const collected: CollectedNode[] = [];
-    const excludeSet = new Set(options.exclude);
+    const ctx: WalkContext = {
+      maxDepth: options.maxDepth,
+      excludeSet: new Set(options.exclude),
+      skipIds: new Set(options.skipIds ?? []),
+      matchedSkipIds: new Set(),
+      rootBoxFiber: null,
+      out: collected,
+    };
 
     try {
-      walkFiber(fiber as Record<string, unknown>, 0, options.maxDepth, excludeSet, collected);
+      const rootFiber = fiber as Record<string, unknown>;
+      // rootId: walk only the subtree of that element. Positions stay relative
+      // to the measured root, so the wrapper around it keeps its space.
+      let walkStart = rootFiber;
+      if (options.rootId) {
+        const target = findHostFiber(rootFiber, props => props.nativeID === options.rootId);
+        if (target) {
+          walkStart = target;
+        } else {
+          warnOnce(`rootId:${options.rootId}`, `rootId: no element with nativeID "${options.rootId}" was found; using the whole component.`);
+        }
+      }
+      // skeletonRoot: the root element (rootId target, else the first host
+      // element rendered by the component) becomes an implicit SkeletonBox.
+      if (options.skeletonRoot) {
+        ctx.rootBoxFiber = walkStart !== rootFiber ? walkStart : findHostFiber(rootFiber, () => true);
+      }
+      walkFiber(walkStart, 0, ctx, false);
     } catch {
       resolve(null);
       return;
+    }
+
+    for (const id of ctx.skipIds) {
+      if (!ctx.matchedSkipIds.has(id)) {
+        warnOnce(`skipIds:${id}`, `skipIds: no element with nativeID "${id}" was found in the measured component.`);
+      }
     }
 
 

@@ -3,6 +3,7 @@ import { UIManager } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy, BoneStyleOverride } from '../../core/types';
 import { measureFiberLeaves } from './fiberWalker';
+import { warnOnce } from '../../core/dev';
 
 /**
  * Detects the element type from a React Native component displayName.
@@ -84,6 +85,7 @@ function buildRootOnlyHook(
   boneStyle?: BoneStyleOverride,
   maxDepth = 20,
   exclude: string[] = [],
+  skipIds: string[] = [],
 ): MeasureLayoutResult {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rootLayoutRef = useRef<MeasuredLayout | null>(null);
@@ -150,7 +152,7 @@ function buildRootOnlyHook(
       const instance = warmupRef.current;
       if (instance) {
         measureRootPageXY(instance, (rootPageX, rootPageY) => {
-          measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth, exclude })
+          measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth, exclude, skipIds })
             .then(layouts => {
               if (layouts && layouts.length > 0) {
                 scoringLeavesRef.current = layouts.map(l => ({
@@ -166,7 +168,7 @@ function buildRootOnlyHook(
 
       rebuildTree();
     },
-    [rebuildTree, maxDepth, exclude]
+    [rebuildTree, maxDepth, exclude, skipIds]
   );
 
   const createChildLayoutHandler = useCallback(
@@ -202,24 +204,34 @@ function buildRootOnlyHook(
  * SkeletonBox nodes become parents of any layout whose bounds fall
  * entirely within theirs (geometric containment). All other layouts
  * stay as root-level children.
+ *
+ * Nested boxes (a card frame containing an icon pastille): each leaf goes to
+ * the SMALLEST box containing it, and boxes are emitted largest first, so an
+ * inner box is drawn over the outer box but under its own leaves. Taking the
+ * first matching box (v3) gave every leaf to the outer box, and the inner box
+ * was then drawn on top of its own content.
  */
-function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
-  const boxes = layouts.filter(l => l.isSkeletonBox);
+export function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
+  const area = (l: MeasuredLayout) => l.width * l.height;
+  const boxes = layouts.filter(l => l.isSkeletonBox).sort((a, b) => area(b) - area(a));
   const leaves = layouts.filter(l => !l.isSkeletonBox);
 
   if (boxes.length === 0) {
     return leaves.map(l => ({ layout: l, children: [] }));
   }
 
+  const contains = (b: MeasuredLayout, l: MeasuredLayout) =>
+    l.x >= b.x && l.y >= b.y &&
+    l.x + l.width <= b.x + b.width &&
+    l.y + l.height <= b.y + b.height;
+
   const boxChildren = new Map<MeasuredLayout, BoneTree[]>(boxes.map(b => [b, []]));
   const rootChildren: BoneTree[] = [];
 
   for (const l of leaves) {
-    const parent = boxes.find(
-      b => l.x >= b.x && l.y >= b.y &&
-           l.x + l.width <= b.x + b.width &&
-           l.y + l.height <= b.y + b.height
-    );
+    // boxes is sorted largest first : the last match is the innermost box.
+    let parent: MeasuredLayout | undefined;
+    for (const b of boxes) if (contains(b, l)) parent = b;
     if (parent) {
       boxChildren.get(parent)!.push({ layout: l, children: [] });
     } else {
@@ -239,6 +251,9 @@ function nestLayouts(layouts: MeasuredLayout[]): BoneTree[] {
 interface AutoMeasureOptions {
   maxDepth: number;
   exclude: string[];
+  skipIds: string[];
+  skeletonRoot: boolean;
+  rootId?: string;
 }
 
 function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
@@ -267,8 +282,10 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
         measureFiberLeaves(instance, rootPageX, rootPageY, options)
           .then(layouts => {
             if (!layouts || layouts.length === 0) {
-              console.warn(
-                '[skelter] auto strategy: 0 leaves found, falling back to root-only. ' +
+              // Development only, once : v3 logged this in production, for every instance.
+              warnOnce(
+                'auto-no-leaves',
+                'auto strategy: 0 leaves found, falling back to root-only. ' +
                 'Possible causes: React 19 / Hermes stripped fiber internals, ' +
                 'hermetic bundle, or test environment. ' +
                 'Pass measureStrategy: "root-only" to silence this warning.'
@@ -325,6 +342,9 @@ export interface UseMeasureLayoutOptions {
   maxDepth: number;
   exclude: string[];
   boneStyle?: BoneStyleOverride;
+  skipIds?: string[];
+  skeletonRoot?: boolean;
+  rootId?: string;
 }
 
 /**
@@ -344,10 +364,16 @@ export function useMeasureLayout(opts: UseMeasureLayoutOptions): MeasureLayoutRe
   // The strategy must not change after mount (it's derived from static options).
   if (opts.strategy === 'auto') {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return buildAutoHook({ maxDepth: opts.maxDepth, exclude: opts.exclude });
+    return buildAutoHook({
+      maxDepth: opts.maxDepth,
+      exclude: opts.exclude,
+      skipIds: opts.skipIds ?? [],
+      skeletonRoot: opts.skeletonRoot ?? false,
+      rootId: opts.rootId,
+    });
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude);
+  return buildRootOnlyHook(opts.boneStyle, opts.maxDepth, opts.exclude, opts.skipIds ?? []);
 }
 
 export { detectElementType };

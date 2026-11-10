@@ -12,8 +12,10 @@ import type { Bone, SkeletonConfig, SkeletonEnter, SkeletonExit, StaticBone, Wit
 import { SKELETON_ENTER_MS, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
+import type { WebMeasureOptions } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
 import { generateBones } from '../../core/generateBones';
+import { resolveMockProps } from '../../core/options';
 
 
 type ExitPhase = 'visible' | 'exiting' | 'hidden';
@@ -236,6 +238,19 @@ function InspectionOverlay({ bones, containerW, containerH, contentRects }: {
 }
 type EnterPhase = 'entering' | 'visible';
 
+// revealOnExit : the content fades in (0 → 1) while the overlay fades out, instead of
+// showing at full opacity under still-opaque bones on the first exit frame.
+const REVEAL_KEYFRAMES_NAME = 'skl-reveal';
+let revealKeyframesInjected = false;
+function injectRevealKeyframes(): void {
+  if (revealKeyframesInjected || typeof document === 'undefined') return;
+  const style = document.createElement('style');
+  style.setAttribute('data-skelter', REVEAL_KEYFRAMES_NAME);
+  style.textContent = `@keyframes ${REVEAL_KEYFRAMES_NAME} { from { opacity: 0; } to { opacity: 1; } }`;
+  document.head.appendChild(style);
+  revealKeyframesInjected = true;
+}
+
 function exitTransform(exit: SkeletonExit): string | undefined {
   if (exit === 'fadeUp')    return 'translateY(-10px)';
   if (exit === 'fadeDown')  return 'translateY(10px)';
@@ -275,7 +290,7 @@ function useEnterPhase(showOverlay: boolean, enter: SkeletonEnter): EnterPhase {
   return phase;
 }
 
-function useExitPhase(isSkeletonVisible: boolean, isLoading: boolean, exit: SkeletonExit): ExitPhase {
+function useExitPhase(isSkeletonVisible: boolean, isLoading: boolean, exit: SkeletonExit, duration: number = SKELETON_EXIT_MS): ExitPhase {
   const [phase, setPhase] = useState<ExitPhase>(() => isSkeletonVisible ? 'visible' : 'hidden');
   const prevVisible = useRef(isSkeletonVisible);
 
@@ -290,12 +305,12 @@ function useExitPhase(isSkeletonVisible: boolean, isLoading: boolean, exit: Skel
         setPhase('hidden');
       } else {
         setPhase('exiting');
-        const t = setTimeout(() => setPhase('hidden'), SKELETON_EXIT_MS);
+        const t = setTimeout(() => setPhase('hidden'), duration);
         return () => clearTimeout(t);
       }
     }
     prevVisible.current = isSkeletonVisible;
-  }, [isSkeletonVisible, isLoading, exit]);
+  }, [isSkeletonVisible, isLoading, exit, duration]);
 
   return phase;
 }
@@ -311,7 +326,7 @@ export interface SkeletonProps {
 
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>,
-  options?: WithSkeletonOptions
+  options?: WithSkeletonOptions<P>
 ): ComponentType<P & SkeletonProps> {
   const displayName =
     (Component as { displayName?: string }).displayName ||
@@ -350,7 +365,8 @@ export function withSkeleton<P extends object>(
     return (
       <WebSkeletonRenderer
         componentProps={componentProps as P}
-        mockProps={options?.mockProps as Partial<P>}
+        mockProps={resolveMockProps(options)}
+        measureOptions={options}
         Component={Component}
         isLoading={resolvedIsLoading}
         skeletonConfig={skeletonConfig}
@@ -424,7 +440,8 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
 
   const enter = mergedConfig.enter;
   const exit = mergedConfig.exit;
-  const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
+  const exitDuration = mergedConfig.exitDuration ?? SKELETON_EXIT_MS;
+  const phase = useExitPhase(isSkeletonVisible, isLoading, exit, exitDuration);
   const isExiting = phase === 'exiting';
   const showOverlay = (phase !== 'hidden' && !isSSR) || xray;
   const enterPhase = useEnterPhase(phase !== 'hidden' && !isSSR, enter);
@@ -434,7 +451,7 @@ const StaticWebSkeletonRenderer = memo(function StaticWebSkeletonRenderer<P exte
     position: 'absolute', top: 0, left: 0,
     width: boneTree.layout.width, height: boneTree.layout.height,
     ...(isEntering && { opacity: 0, transform: enterTransform(enter), transition: `opacity ${SKELETON_ENTER_MS}ms ease, transform ${SKELETON_ENTER_MS}ms ease` }),
-    ...(isExiting && { opacity: 0, transform: exitTransform(exit), transition: `opacity ${SKELETON_EXIT_MS}ms ease, transform ${SKELETON_EXIT_MS}ms ease` }),
+    ...(isExiting && { opacity: 0, transform: exitTransform(exit), transition: `opacity ${exitDuration}ms ease, transform ${exitDuration}ms ease` }),
   };
 
   const revealOnExit = mergedConfig.revealOnExit;
@@ -586,6 +603,7 @@ interface WebSkeletonRendererProps<P extends object> {
   Component: ComponentType<P>;
   componentProps: P;
   mockProps?: Partial<P>;
+  measureOptions?: WebMeasureOptions;
   isLoading: boolean;
   skeletonConfig?: SkeletonConfig;
   displayName?: string;
@@ -595,6 +613,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   Component,
   componentProps,
   mockProps,
+  measureOptions,
   isLoading: isLoadingProp,
   skeletonConfig,
   displayName = 'Component',
@@ -605,7 +624,11 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const xray = devTools.enabled && devTools.xray;
   const showWaste = devTools.enabled && devTools.showWaste;
 
-  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout();
+  const { boneTree, rootRef, isLayoutCaptured } = useMeasureLayout({
+    skipIds: measureOptions?.skipIds,
+    skeletonRoot: measureOptions?.skeletonRoot,
+    rootId: measureOptions?.rootId,
+  });
 
   const { isSkeletonVisible, bones, mergedConfig } = useSkeleton({
     hasSkeleton: true,
@@ -616,7 +639,8 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
 
   const enter = mergedConfig.enter;
   const exit = mergedConfig.exit;
-  const phase = useExitPhase(isSkeletonVisible, isLoading, exit);
+  const exitDuration = mergedConfig.exitDuration ?? SKELETON_EXIT_MS;
+  const phase = useExitPhase(isSkeletonVisible, isLoading, exit, exitDuration);
   const isExiting = phase === 'exiting';
   const showOverlay = phase !== 'hidden' && isLayoutCaptured && !isSSR;
   const enterPhase = useEnterPhase(showOverlay, enter);
@@ -635,6 +659,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
   const displayBones = (showOverlay || xray || isInspectedForOverlay) ? cachedBones : [];
 
+  if (mergedConfig.revealOnExit) injectRevealKeyframes();
   const revealOnExit = mergedConfig.revealOnExit;
   // isLoading hides on both server AND client so SSR HTML matches first client
   // render : no hydration mismatch, no content bleeding through shatter cells.
@@ -658,7 +683,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     ...(isExiting && {
       opacity: 0,
       transform: exitTransform(exit),
-      transition: `opacity ${SKELETON_EXIT_MS}ms ease, transform ${SKELETON_EXIT_MS}ms ease`,
+      transition: `opacity ${exitDuration}ms ease, transform ${exitDuration}ms ease`,
     }),
   };
 
@@ -821,7 +846,13 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
     >
       <div
         ref={rootRef as React.RefObject<HTMLDivElement>}
-        style={hidden && !xray && !isHovered ? { visibility: 'hidden', pointerEvents: 'none', position: 'relative', zIndex: 1 } : undefined}
+        style={
+          hidden && !xray && !isHovered
+            ? { visibility: 'hidden', pointerEvents: 'none', position: 'relative', zIndex: 1 }
+            : revealOnExit && isExiting
+              ? { animation: `${REVEAL_KEYFRAMES_NAME} ${exitDuration}ms ease both` }
+              : undefined
+        }
         aria-hidden={hidden || undefined}
       >
         <Component {...(mockProps && isLoading ? { ...componentProps, ...mockProps } as P : componentProps as P)} />

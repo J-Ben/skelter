@@ -1,6 +1,6 @@
 {
   "name": "react-zero-skeleton",
-  "version": "3.0.0",
+  "version": "4.0.0-next.2",
   "description": "The component IS the skeleton. Auto-measured at runtime, always in sync, zero maintenance. React & React Native.",
   "keywords": [
     "skeleton",
@@ -27,7 +27,7 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "https://github.com/J-Ben/skelter"
+    "url": "git+https://github.com/J-Ben/skelter.git"
   },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -35,17 +35,18 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "react-native": "./dist/native/index.js",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./devtools": {
+      "types": "./dist/devtools/index.d.ts",
       "react-native": "./dist/devtools/native/index.js",
       "import": "./dist/devtools/index.mjs",
-      "require": "./dist/devtools/index.js",
-      "types": "./dist/devtools/index.d.ts"
-    }
+      "require": "./dist/devtools/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

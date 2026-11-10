@@ -1,0 +1,12 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "react-zero-skeleton": "3.0.0"
+  },
+  "changesets": [
+    "expose-package-json",
+    "reveal-crossfade",
+    "v4-skeleton-control"
+  ]
+}

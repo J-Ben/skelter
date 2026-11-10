@@ -21,6 +21,12 @@ export interface SkeletonThemeProps {
   color?: string;
   /** Highlight color used during animation */
   highlightColor?: string;
+  /** Background color of SkeletonBox / skeletonRoot containers : default = color */
+  boxColor?: string;
+  /** Opacity of SkeletonBox / skeletonRoot container backgrounds : default 0.25 */
+  boxOpacity?: number;
+  /** Animate SkeletonBox / skeletonRoot container backgrounds : default false */
+  boxAnimated?: boolean;
   /** Animation speed multiplier */
   speed?: number;
   /** Default corner radius for all bones */
@@ -43,9 +49,11 @@ export interface SkeletonThemeProps {
   exit?: SkeletonExit;
   /**
    * When true, real content becomes visible underneath the skeleton
-   * while the exit animation plays. Default: false.
+   * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
+  /** Duration of the exit animation, in ms : default 300 */
+  exitDuration?: number;
   /**
    * Cascade stagger delay in ms per pixel of vertical position.
    * When > 0, each bone's animation is delayed by bone.y × cascade ms.
@@ -156,6 +164,9 @@ export function SkeletonTheme({
   animation,
   color,
   highlightColor,
+  boxColor,
+  boxOpacity,
+  boxAnimated,
   speed,
   borderRadius,
   direction,
@@ -167,6 +178,7 @@ export function SkeletonTheme({
   enter,
   exit,
   revealOnExit,
+  exitDuration,
   cascade,
   conditions,
   adaptive,
@@ -185,6 +197,9 @@ export function SkeletonTheme({
       ...(animation !== undefined && { animation }),
       ...(color !== undefined && { color }),
       ...(highlightColor !== undefined && { highlightColor }),
+      ...(boxColor !== undefined && { boxColor }),
+      ...(boxOpacity !== undefined && { boxOpacity }),
+      ...(boxAnimated !== undefined && { boxAnimated }),
       ...(speed !== undefined && { speed }),
       ...(borderRadius !== undefined && { borderRadius }),
       ...(direction !== undefined && { direction }),
@@ -194,6 +209,7 @@ export function SkeletonTheme({
       ...(enter !== undefined && { enter }),
       ...(exit !== undefined && { exit }),
       ...(revealOnExit !== undefined && { revealOnExit }),
+      ...(exitDuration !== undefined && { exitDuration }),
       ...(cascade !== undefined && { cascade }),
       ...(shatterConfig !== undefined && {
         shatterConfig: {
@@ -212,9 +228,9 @@ export function SkeletonTheme({
     }),
     [
       parentContext.config,
-      animation, color, highlightColor, speed,
+      animation, color, highlightColor, boxColor, boxOpacity, boxAnimated, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, cascade,
+      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, exitDuration, cascade,
       conditions, adaptive,
     ]
   );

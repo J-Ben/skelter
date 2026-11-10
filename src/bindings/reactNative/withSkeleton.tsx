@@ -11,10 +11,11 @@ import React, {
 import { useDevTools } from '../../context/DevToolsContext';
 import { View, Text, Pressable, Animated, Easing, AccessibilityInfo, UIManager } from 'react-native';
 import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOverride } from '../../core/types';
-import { resolveSpeed } from '../../core/constants';
+import { resolveSpeed, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
 import { generateBones } from '../../core/generateBones';
+import { resolveMockProps } from '../../core/options';
 import type { ScoringRect } from '../../adapters/native/measureLayout';
 import { measureFiberLeaves } from '../../adapters/native/fiberWalker';
 import { SkeletonBone } from '../../adapters/native/SkeletonBone';
@@ -59,14 +60,25 @@ function CascadeBone({ bone, delay, children }: {
 
 const _FallbackContext = createContext<unknown>(null);
 let _VirtualizedListContext: React.Context<unknown> = _FallbackContext;
+// Since RN 0.72 the lists live in @react-native/virtualized-lists; the
+// react-native/Libraries path no longer exports VirtualizedListContext in
+// recent versions (0.86+). Each require must stay a literal call inside its
+// own try/catch so Metro treats it as an optional dependency.
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('react-native/Libraries/Lists/VirtualizedListContext');
-  if (mod?.VirtualizedListContext) {
-    _VirtualizedListContext = mod.VirtualizedListContext;
-  }
+  const mod = require('@react-native/virtualized-lists/Lists/VirtualizedListContext');
+  if (mod?.VirtualizedListContext) _VirtualizedListContext = mod.VirtualizedListContext;
 } catch {
-  // Module unavailable : fallback context stays in use
+  // Package unavailable (RN < 0.72) : try the legacy path below
+}
+if (_VirtualizedListContext === _FallbackContext) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('react-native/Libraries/Lists/VirtualizedListContext');
+    if (mod?.VirtualizedListContext) _VirtualizedListContext = mod.VirtualizedListContext;
+  } catch {
+    // Module unavailable : fallback context stays in use
+  }
 }
 
 function useIsInFlatList(): boolean {
@@ -81,7 +93,10 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
-type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle'>> & { boneStyle?: BoneStyleOverride };
+type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData' | 'rootId'>> & {
+  boneStyle?: BoneStyleOverride;
+  rootId?: string;
+};
 
 /** Default WithSkeletonOptions applied when no second argument is passed. */
 const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
@@ -90,6 +105,8 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
   exclude: [],
   mockProps: {},
   staticBones: [],
+  skipIds: [],
+  skeletonRoot: false,
 };
 
 /**
@@ -99,7 +116,8 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  * @param options   - Optional measurement configuration
  *   measureStrategy: 'auto' (default) : one bone per leaf element via Fiber walk
  *   measureStrategy: 'root-only'      : single block, identical to v0.2
- *   maxDepth: max depth of Fiber traversal (default 8)
+ *   maxDepth: max depth of Fiber traversal (default 20)
+ *   mockData: realistic props for the measurement pass (alias: mockProps)
  *   exclude: component displayNames excluded from per-element measurement
  *
  * @example
@@ -114,7 +132,7 @@ const DEFAULT_HOC_OPTIONS: ResolvedHocOptions = {
  */
 export function withSkeleton<P extends object>(
   Component: ComponentType<P>,
-  options?: WithSkeletonOptions
+  options?: WithSkeletonOptions<P>
 ): ComponentType<P & SkeletonProps> {
   const displayName =
     (Component as { displayName?: string }).displayName ||
@@ -125,6 +143,7 @@ export function withSkeleton<P extends object>(
     ...DEFAULT_HOC_OPTIONS,
     ...options,
     exclude: [...DEFAULT_HOC_OPTIONS.exclude, ...(options?.exclude ?? [])],
+    mockProps: (resolveMockProps(options) ?? DEFAULT_HOC_OPTIONS.mockProps) as Record<string, unknown>,
   };
 
   const WrappedComponent = memo((props: P & SkeletonProps) => {
@@ -192,9 +211,13 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const id = useId();
   const { enabled, registerComponent, unregisterComponent, setMatchScore, inspectedId, setInspectedId, matchScores, forcedIds, forceLoading, xray, showWaste, highlight } = useDevTools();
 
-  // In FlatList, per-element walk is expensive (50 items × N fibers).
-  // Force root-only inside VirtualizedList.
-  const effectiveStrategy = isInFlatList ? 'root-only' : hocOptions.measureStrategy;
+  // v3 forced 'root-only' (one block per item) inside a VirtualizedList, but
+  // list detection never worked in published builds, so every app shipped
+  // per-element bones in lists. v4 keeps that behaviour now that detection
+  // works : lists use the configured strategy; pass measureStrategy:
+  // 'root-only' to get one block per item. Detection still drives
+  // maxBonesInList and the shatter → pulse fallback.
+  const effectiveStrategy = hocOptions.measureStrategy;
 
   const effectiveConfig: SkeletonConfig | undefined =
     isInFlatList && skeletonConfig?.animation === 'shatter'
@@ -206,6 +229,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     maxDepth: hocOptions.maxDepth,
     exclude: hocOptions.exclude,
     boneStyle: hocOptions.boneStyle,
+    skipIds: hocOptions.skipIds,
+    skeletonRoot: hocOptions.skeletonRoot,
+    rootId: hocOptions.rootId,
   });
 
   const resolvedIsLoading = isLoading || (enabled && (forceLoading || forcedIds.has(id)));
@@ -232,7 +258,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const displayBones = (xray || isInspected || isExiting) ? cachedBones : bones;
 
   // Real content ref + real leaves for waste overlay (measured from actual rendered content, not mock).
-  const realContentRef = useRef<View | null>(null);
+  // ElementRef<typeof View> : the View class instance up to RN 0.86, ReactNativeElement from RN 0.88
+  // (View became a function component in the types) — useRef<View> no longer compiles there.
+  const realContentRef = useRef<React.ElementRef<typeof View> | null>(null);
   const realLeavesRef = useRef<ScoringRect[]>([]);
   const [, forceRealLeaves] = React.useReducer((n: number) => n + 1, 0);
 
@@ -242,7 +270,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     if (!instance) return;
 
     const measure = (rootPageX: number, rootPageY: number) => {
-      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [] })
+      measureFiberLeaves(instance, rootPageX, rootPageY, { maxDepth: hocOptions.maxDepth, exclude: hocOptions.exclude ?? [], skipIds: hocOptions.skipIds, skeletonRoot: hocOptions.skeletonRoot, rootId: hocOptions.rootId })
         .then(layouts => {
           if (layouts && layouts.length > 0 && boneTree) {
             const realLeaves = layouts.map(l => ({
@@ -343,12 +371,17 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   // Enter animation: fade in skeleton when it first becomes visible.
-  const enterOpacityRef = useRef(new Animated.Value(0)).current;
+  // Starts at 1 without an enter animation, so the first painted frame already shows the bones.
+  const enterOpacityRef = useRef(new Animated.Value(mergedConfig.enter === 'none' ? 1 : 0)).current;
 
   // Exit animation: fade + translate bones when loading → loaded transition.
   const exitOpacityRef = useRef(new Animated.Value(1)).current;
   const exitTranslateYRef = useRef(new Animated.Value(0)).current;
   const exitTranslateXRef = useRef(new Animated.Value(0)).current;
+  // revealOnExit : real content opacity during the exit (0 → 1 while the bones go 1 → 0).
+  // Without it the content jumped to full opacity under still-opaque bones, and any
+  // text wider than its bone showed around it for the first frames of the exit.
+  const revealOpacityRef = useRef(new Animated.Value(1)).current;
 
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
@@ -358,8 +391,11 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   }, []);
 
   // Enter fade: animate opacity 0→1 when skeleton becomes visible.
+  // Only when an enter animation is configured : v3 always faded in on native,
+  // ignoring the documented default enter: 'none', which painted blank frames
+  // (content hidden, bones still at opacity 0) at the start of every load.
   useEffect(() => {
-    if (isSkeletonVisible && !reduceMotion) {
+    if (isSkeletonVisible && !reduceMotion && mergedConfig.enter !== 'none') {
       enterOpacityRef.setValue(0);
       Animated.timing(enterOpacityRef, {
         toValue: 1,
@@ -372,57 +408,59 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSkeletonVisible]);
 
-  // Track if skeleton was visible AND trigger exit animation on transition.
-  const wasSkeletonVisibleRef = useRef(false);
+  // Exit animation (visible → hidden).
+  // The exiting state is entered DURING RENDER, in the same pass where
+  // isSkeletonVisible turns false. Entering it from an effect (v3) let one frame
+  // be painted with the real content and no bones, after which the bones came
+  // back for their fade : one flash per instance, very visible when a whole
+  // list resolves at once.
+  const shouldAnimateExit = mergedConfig.exit !== 'none' && !reduceMotion;
+  const [prevSkeletonVisible, setPrevSkeletonVisible] = useState(isSkeletonVisible);
+  if (prevSkeletonVisible !== isSkeletonVisible) {
+    setPrevSkeletonVisible(isSkeletonVisible);
+    if (!isSkeletonVisible && shouldAnimateExit && !isExiting) {
+      // Set before this render commits, so the first exit frame paints the content at 0.
+      if (mergedConfig.revealOnExit) revealOpacityRef.setValue(0);
+      setIsExiting(true);
+    }
+    // Loading again while the exit plays : cancel the exit, show bones normally.
+    if (isSkeletonVisible && isExiting) setIsExiting(false);
+  }
 
   useEffect(() => {
-    const wasVisible = wasSkeletonVisibleRef.current;
-    const isNowVisible = isSkeletonVisible;
+    if (!isExiting) return;
+    const exitType = mergedConfig.exit;
 
-    // Transition from visible → hidden: trigger exit animation.
-    if (wasVisible && !isNowVisible && !isExiting) {
-      console.log('[EXIT-TRIGGERED-DIRECT]', { exitType: mergedConfig.exit, reduceMotion });
-      const exitType = mergedConfig.exit;
-      const shouldAnimateExit = exitType !== 'none' && !reduceMotion;
+    // Calculate target transform values based on exit type.
+    let targetY = 0, targetX = 0;
+    if (exitType === 'fadeUp') targetY = -20;
+    else if (exitType === 'fadeDown') targetY = 20;
+    else if (exitType === 'fadeLeft') targetX = -20;
+    else if (exitType === 'fadeRight') targetX = 20;
 
-      if (shouldAnimateExit) {
-        setIsExiting(true);
+    // Run opacity + translate animations in parallel (and the content reveal, see revealOpacityRef).
+    const duration = mergedConfig.exitDuration ?? SKELETON_EXIT_MS;
+    const anim = Animated.parallel([
+      Animated.timing(exitOpacityRef, { toValue: 0, duration, useNativeDriver: true }),
+      Animated.timing(exitTranslateYRef, { toValue: targetY, duration, useNativeDriver: true }),
+      Animated.timing(exitTranslateXRef, { toValue: targetX, duration, useNativeDriver: true }),
+      ...(mergedConfig.revealOnExit
+        ? [Animated.timing(revealOpacityRef, { toValue: 1, duration, useNativeDriver: true })]
+        : []),
+    ]);
+    anim.start(({ finished }) => {
+      if (finished) setIsExiting(false);
+    });
 
-        // Calculate target transform values based on exit type.
-        let targetY = 0, targetX = 0;
-        if (exitType === 'fadeUp') targetY = -20;
-        else if (exitType === 'fadeDown') targetY = 20;
-        else if (exitType === 'fadeLeft') targetX = -20;
-        else if (exitType === 'fadeRight') targetX = 20;
-
-        // Run opacity + translate animations in parallel.
-        Animated.parallel([
-          Animated.timing(exitOpacityRef, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(exitTranslateYRef, {
-            toValue: targetY,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(exitTranslateXRef, {
-            toValue: targetX,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          setIsExiting(false);
-          exitOpacityRef.setValue(1);
-          exitTranslateYRef.setValue(0);
-          exitTranslateXRef.setValue(0);
-        });
-      }
-    }
-
-    wasSkeletonVisibleRef.current = isNowVisible;
-  }, [isSkeletonVisible, mergedConfig.exit, reduceMotion, isExiting, exitOpacityRef, exitTranslateYRef, exitTranslateXRef]);
+    return () => {
+      anim.stop();
+      exitOpacityRef.setValue(1);
+      exitTranslateYRef.setValue(0);
+      exitTranslateXRef.setValue(0);
+      revealOpacityRef.setValue(1);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExiting]);
 
   // Single animation loop : drives all bones from this component.
   useEffect(() => {
@@ -505,7 +543,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     <View style={isExiting && boneTree ? { height: boneTree.layout.height, overflow: 'hidden' } : undefined}>
       {!isSSR && !isLayoutCaptured && (
         <View
-          ref={warmupRef as React.RefObject<View>}
+          ref={warmupRef as React.RefObject<React.ElementRef<typeof View>>}
           style={{ opacity: 0 }}
           pointerEvents="none"
           onLayout={onRootLayout}
@@ -530,15 +568,25 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
         </Animated.View>
       )}
 
-      {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts. Visible after. */}
-      <View
+      {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts.
+          During the exit it is revealed under the fading bones (revealOnExit, default true), or stays
+          hidden until the exit completes with revealOnExit: false (v3 ignored this option on native). */}
+      {/* Always an Animated.View (never swapped for a View) so the content is not remounted
+          when the exit starts. */}
+      <Animated.View
         ref={realContentRef}
         collapsable={false}
-        style={isSkeletonVisible && !isExiting ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 } : undefined}
-        pointerEvents={isSkeletonVisible && !isExiting ? 'none' : 'auto'}
+        style={
+          isSkeletonVisible && !isExiting
+            ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }
+            : isExiting
+              ? { opacity: mergedConfig.revealOnExit ? revealOpacityRef : 0 }
+              : undefined
+        }
+        pointerEvents={isSkeletonVisible || (isExiting && !mergedConfig.revealOnExit) ? 'none' : 'auto'}
       >
         <Component {...componentProps} />
-      </View>
+      </Animated.View>
       {showXrayOverlay && (
         <View
           style={{ position: 'absolute', top: 0, left: 0, opacity: isSkeletonVisible ? 0.85 : 0.5 }}
