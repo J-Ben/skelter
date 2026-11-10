@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "react-zero-skeleton": "3.0.0"
+  },
+  "changesets": [
+    "v4-skeleton-control"
+  ]
+}
