@@ -258,7 +258,9 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const displayBones = (xray || isInspected || isExiting) ? cachedBones : bones;
 
   // Real content ref + real leaves for waste overlay (measured from actual rendered content, not mock).
-  const realContentRef = useRef<View | null>(null);
+  // ElementRef<typeof View> : the View class instance up to RN 0.86, ReactNativeElement from RN 0.88
+  // (View became a function component in the types) — useRef<View> no longer compiles there.
+  const realContentRef = useRef<React.ElementRef<typeof View> | null>(null);
   const realLeavesRef = useRef<ScoringRect[]>([]);
   const [, forceRealLeaves] = React.useReducer((n: number) => n + 1, 0);
 
@@ -528,7 +530,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     <View style={isExiting && boneTree ? { height: boneTree.layout.height, overflow: 'hidden' } : undefined}>
       {!isSSR && !isLayoutCaptured && (
         <View
-          ref={warmupRef as React.RefObject<View>}
+          ref={warmupRef as React.RefObject<React.ElementRef<typeof View>>}
           style={{ opacity: 0 }}
           pointerEvents="none"
           onLayout={onRootLayout}
