@@ -378,6 +378,10 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const exitOpacityRef = useRef(new Animated.Value(1)).current;
   const exitTranslateYRef = useRef(new Animated.Value(0)).current;
   const exitTranslateXRef = useRef(new Animated.Value(0)).current;
+  // revealOnExit : real content opacity during the exit (0 → 1 while the bones go 1 → 0).
+  // Without it the content jumped to full opacity under still-opaque bones, and any
+  // text wider than its bone showed around it for the first frames of the exit.
+  const revealOpacityRef = useRef(new Animated.Value(1)).current;
 
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
@@ -414,7 +418,11 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const [prevSkeletonVisible, setPrevSkeletonVisible] = useState(isSkeletonVisible);
   if (prevSkeletonVisible !== isSkeletonVisible) {
     setPrevSkeletonVisible(isSkeletonVisible);
-    if (!isSkeletonVisible && shouldAnimateExit && !isExiting) setIsExiting(true);
+    if (!isSkeletonVisible && shouldAnimateExit && !isExiting) {
+      // Set before this render commits, so the first exit frame paints the content at 0.
+      if (mergedConfig.revealOnExit) revealOpacityRef.setValue(0);
+      setIsExiting(true);
+    }
     // Loading again while the exit plays : cancel the exit, show bones normally.
     if (isSkeletonVisible && isExiting) setIsExiting(false);
   }
@@ -430,11 +438,15 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     else if (exitType === 'fadeLeft') targetX = -20;
     else if (exitType === 'fadeRight') targetX = 20;
 
-    // Run opacity + translate animations in parallel.
+    // Run opacity + translate animations in parallel (and the content reveal, see revealOpacityRef).
+    const duration = mergedConfig.exitDuration ?? SKELETON_EXIT_MS;
     const anim = Animated.parallel([
-      Animated.timing(exitOpacityRef, { toValue: 0, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
-      Animated.timing(exitTranslateYRef, { toValue: targetY, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
-      Animated.timing(exitTranslateXRef, { toValue: targetX, duration: SKELETON_EXIT_MS, useNativeDriver: true }),
+      Animated.timing(exitOpacityRef, { toValue: 0, duration, useNativeDriver: true }),
+      Animated.timing(exitTranslateYRef, { toValue: targetY, duration, useNativeDriver: true }),
+      Animated.timing(exitTranslateXRef, { toValue: targetX, duration, useNativeDriver: true }),
+      ...(mergedConfig.revealOnExit
+        ? [Animated.timing(revealOpacityRef, { toValue: 1, duration, useNativeDriver: true })]
+        : []),
     ]);
     anim.start(({ finished }) => {
       if (finished) setIsExiting(false);
@@ -445,6 +457,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       exitOpacityRef.setValue(1);
       exitTranslateYRef.setValue(0);
       exitTranslateXRef.setValue(0);
+      revealOpacityRef.setValue(1);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExiting]);
@@ -558,20 +571,22 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts.
           During the exit it is revealed under the fading bones (revealOnExit, default true), or stays
           hidden until the exit completes with revealOnExit: false (v3 ignored this option on native). */}
-      <View
+      {/* Always an Animated.View (never swapped for a View) so the content is not remounted
+          when the exit starts. */}
+      <Animated.View
         ref={realContentRef}
         collapsable={false}
         style={
           isSkeletonVisible && !isExiting
             ? { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }
-            : isExiting && !mergedConfig.revealOnExit
-              ? { opacity: 0 }
+            : isExiting
+              ? { opacity: mergedConfig.revealOnExit ? revealOpacityRef : 0 }
               : undefined
         }
         pointerEvents={isSkeletonVisible || (isExiting && !mergedConfig.revealOnExit) ? 'none' : 'auto'}
       >
         <Component {...componentProps} />
-      </View>
+      </Animated.View>
       {showXrayOverlay && (
         <View
           style={{ position: 'absolute', top: 0, left: 0, opacity: isSkeletonVisible ? 0.85 : 0.5 }}

@@ -9,6 +9,7 @@ describe('DEFAULT_SKELETON_CONFIG', () => {
     expect(DEFAULT_SKELETON_CONFIG.enter).toBe('none');
     expect(DEFAULT_SKELETON_CONFIG.exit).toBe('fade');
     expect(DEFAULT_SKELETON_CONFIG.revealOnExit).toBe(true);
+    expect(DEFAULT_SKELETON_CONFIG.exitDuration).toBe(300);
   });
 });
 

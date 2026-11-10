@@ -52,6 +52,8 @@ export interface SkeletonThemeProps {
    * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
+  /** Duration of the exit animation, in ms : default 300 */
+  exitDuration?: number;
   /**
    * Cascade stagger delay in ms per pixel of vertical position.
    * When > 0, each bone's animation is delayed by bone.y × cascade ms.
@@ -176,6 +178,7 @@ export function SkeletonTheme({
   enter,
   exit,
   revealOnExit,
+  exitDuration,
   cascade,
   conditions,
   adaptive,
@@ -206,6 +209,7 @@ export function SkeletonTheme({
       ...(enter !== undefined && { enter }),
       ...(exit !== undefined && { exit }),
       ...(revealOnExit !== undefined && { revealOnExit }),
+      ...(exitDuration !== undefined && { exitDuration }),
       ...(cascade !== undefined && { cascade }),
       ...(shatterConfig !== undefined && {
         shatterConfig: {
@@ -226,7 +230,7 @@ export function SkeletonTheme({
       parentContext.config,
       animation, color, highlightColor, boxColor, boxOpacity, boxAnimated, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, cascade,
+      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, exitDuration, cascade,
       conditions, adaptive,
     ]
   );

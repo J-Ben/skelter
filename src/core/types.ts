@@ -229,9 +229,14 @@ export interface SkeletonConfig {
   /**
    * When true, real content becomes visible underneath the skeleton
    * while the exit animation plays — skeleton fades out revealing content.
-   * Default: true (cross-fade). Set false to show content only after the exit completes.
+   * Default: true (cross-fade : content fades in while the bones fade out).
+   * Set false to show content only after the exit completes.
    */
   revealOnExit?: boolean;
+  /**
+   * Duration of the exit animation, in ms. Default: 300.
+   */
+  exitDuration?: number;
   /**
    * Exit animation played when the skeleton disappears.
    * Default: 'fade' (300 ms opacity fade-out).
