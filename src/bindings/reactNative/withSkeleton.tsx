@@ -554,8 +554,8 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       )}
 
       {/* Real content: pre-rendered (opacity 0) during loading so layout is ready when exit starts.
-          During the exit it stays hidden unless revealOnExit (documented default: content appears
-          only after the exit completes — v3 ignored this on native and showed both layers). */}
+          During the exit it is revealed under the fading bones (revealOnExit, default true), or stays
+          hidden until the exit completes with revealOnExit: false (v3 ignored this option on native). */}
       <View
         ref={realContentRef}
         collapsable={false}

@@ -49,7 +49,7 @@ export interface SkeletonThemeProps {
   exit?: SkeletonExit;
   /**
    * When true, real content becomes visible underneath the skeleton
-   * while the exit animation plays. Default: false.
+   * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
   /**

@@ -8,7 +8,7 @@ describe('DEFAULT_SKELETON_CONFIG', () => {
   it('documents the enter / exit / reveal defaults the native renderer honours', () => {
     expect(DEFAULT_SKELETON_CONFIG.enter).toBe('none');
     expect(DEFAULT_SKELETON_CONFIG.exit).toBe('fade');
-    expect(DEFAULT_SKELETON_CONFIG.revealOnExit).toBe(false);
+    expect(DEFAULT_SKELETON_CONFIG.revealOnExit).toBe(true);
   });
 });
 

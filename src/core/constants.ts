@@ -118,7 +118,7 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   maxBonesInList: 0,
   enter: 'none' as const,
   exit: 'fade' as const,
-  revealOnExit: false,
+  revealOnExit: true,
   cascade: 0,
   conditions: {},
   adaptive: [],

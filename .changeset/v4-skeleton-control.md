@@ -29,4 +29,4 @@ v4: advanced skeleton control and React Native rendering fixes.
 - React Native: skeletons no longer fade in by default (`enter: 'none'` is now respected). Set `enter: 'fade'` for the v3 look.
 - React Native: lists no longer force `measureStrategy: 'root-only'` (the rule never ran because detection was broken). Pass `measureStrategy: 'root-only'` for one block per item.
 - React Native: box backgrounds no longer animate by default (as on web). Set `boxAnimated: true` to animate them.
-- React Native: with the default `revealOnExit: false`, real content now appears when the exit animation ends instead of under the fading bones. Set `revealOnExit: true` for the overlap.
+- `revealOnExit` defaults to `true`: real content fades in under the fading skeleton (cross-fade) instead of appearing after the exit. Set `revealOnExit: false` to show content only once the exit ends (now honoured on React Native too). No effect with `exit: 'none'`.

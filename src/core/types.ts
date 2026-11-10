@@ -229,7 +229,7 @@ export interface SkeletonConfig {
   /**
    * When true, real content becomes visible underneath the skeleton
    * while the exit animation plays — skeleton fades out revealing content.
-   * Default: false (content appears only after exit completes).
+   * Default: true (cross-fade). Set false to show content only after the exit completes.
    */
   revealOnExit?: boolean;
   /**
