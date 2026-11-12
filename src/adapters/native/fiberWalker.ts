@@ -53,9 +53,22 @@ export function registerSkeletonLeaf(...names: string[]): void {
   names.forEach(n => USER_LEAVES.add(n));
 }
 
+/** Characters assumed for a Text whose content is empty during loading. */
+const EMPTY_TEXT_CHARS = 8;
+
 /** Returns true if typeName is any known host component. */
 function isKnownHost(typeName: string): boolean {
   return CONTENT_COMPONENTS.has(typeName) || CONTAINER_VIEWS.has(typeName) || USER_LEAVES.has(typeName);
+}
+
+/**
+ * A host fiber the lib does not know (LinearGradient, BlurView…) with no host
+ * descendant: it is a visual leaf, so it gets a bone like a bare <View>.
+ */
+function isUnknownHostLeaf(fiber: Record<string, unknown>, excludeSet: Set<string>): boolean {
+  const name = getTypeName(fiber);
+  const isHost = (fiber.tag as number) === 5 || typeof fiber.type === 'string';
+  return isHost && name !== '' && !isKnownHost(name) && !hasAnyHostDescendant(fiber, excludeSet);
 }
 
 function getElementType(typeName: string): ElementType {
@@ -94,7 +107,7 @@ function hasAnyHostDescendant(
   while (child) {
     const name = getTypeName(child);
     if (!excludeSet.has(name)) {
-      if (((child.tag as number) === 5 || typeof child.type === 'string') && isKnownHost(name)) return true;
+      if (((child.tag as number) === 5 || typeof child.type === 'string') && (isKnownHost(name) || isUnknownHostLeaf(child, excludeSet))) return true;
       if (hasAnyHostDescendant(child, excludeSet)) return true;
     }
     child = child.sibling as Record<string, unknown> | null;
@@ -198,7 +211,14 @@ function walkFiber(
   // When this node is a SkeletonParagraph wrapper, we collect it as a single
   // text block and skip its children so the inner Text doesn't add a bone too.
   let skipChildren = false;
-  if (isHostFiber && isKnownHost(typeName)) {
+  const unknownLeaf = isHostFiber && isUnknownHostLeaf(fiber, excludeSet);
+  if (unknownLeaf) {
+    warnOnce(
+      `unknownHost:${typeName}`,
+      `"${typeName}" is not a recognised host component: it is treated as one solid bone. Call registerSkeletonLeaf('${typeName}') to silence this, or <SkeletonIgnore> to exclude it.`
+    );
+  }
+  if (isHostFiber && (isKnownHost(typeName) || unknownLeaf)) {
     // Decide whether to emit a bone for this node.
     // Content/interactive components are always bones.
     // Container Views are bones only when they have no host descendants
@@ -256,7 +276,18 @@ function walkFiber(
       if (nodeType === 'text') {
         const raw = extractTextContent(props.children);
         const fontSize = ((flatStyle as Record<string, unknown>).fontSize as number | undefined) ?? 14;
-        if (raw.length > 0) textContentWidth = raw.length * fontSize * 0.55;
+        if (raw.length > 0) {
+          textContentWidth = raw.length * fontSize * 0.55;
+        } else if (paragraphLines === undefined) {
+          // Empty text while loading: its real width is unknown, and a Text in a column
+          // stretches to the container. Never emit a full-width bone: use a short,
+          // plausible width and tell the consumer how to get an exact one.
+          textContentWidth = EMPTY_TEXT_CHARS * fontSize * 0.55;
+          warnOnce(
+            'emptyText',
+            'A Text is empty while loading, so its skeleton bone uses a default width. Pass mockProps (or mockData) to the component for an exact width.'
+          );
+        }
       }
 
       if (stateNode || nativeTag > 0) {
