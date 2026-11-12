@@ -53,9 +53,6 @@ export function registerSkeletonLeaf(...names: string[]): void {
   names.forEach(n => USER_LEAVES.add(n));
 }
 
-/** Characters assumed for a Text whose content is empty during loading. */
-const EMPTY_TEXT_CHARS = 8;
-
 /** Returns true if typeName is any known host component. */
 function isKnownHost(typeName: string): boolean {
   return CONTENT_COMPONENTS.has(typeName) || CONTAINER_VIEWS.has(typeName) || USER_LEAVES.has(typeName);
@@ -276,18 +273,7 @@ function walkFiber(
       if (nodeType === 'text') {
         const raw = extractTextContent(props.children);
         const fontSize = ((flatStyle as Record<string, unknown>).fontSize as number | undefined) ?? 14;
-        if (raw.length > 0) {
-          textContentWidth = raw.length * fontSize * 0.55;
-        } else if (paragraphLines === undefined) {
-          // Empty text while loading: its real width is unknown, and a Text in a column
-          // stretches to the container. Never emit a full-width bone: use a short,
-          // plausible width and tell the consumer how to get an exact one.
-          textContentWidth = EMPTY_TEXT_CHARS * fontSize * 0.55;
-          warnOnce(
-            'emptyText',
-            'A Text is empty while loading, so its skeleton bone uses a default width. Pass mockProps (or mockData) to the component for an exact width.'
-          );
-        }
+        if (raw.length > 0) textContentWidth = raw.length * fontSize * 0.55;
       }
 
       if (stateNode || nativeTag > 0) {
