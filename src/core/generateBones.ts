@@ -150,10 +150,18 @@ function collectBones(node: BoneTree, bones: Bone[]): void {
   }
 
   if (isLeaf || isContent) {
+    // A Text stretches to its container (column layout): size the bone to the
+    // space the text really needs, and keep it on the side the text is aligned to.
+    const { width: fullWidth, textContentWidth } = node.layout;
+    const isText = node.layout.type === 'text';
+    const needed = isText && textContentWidth !== undefined && textContentWidth > 0 ? Math.min(textContentWidth, fullWidth) : fullWidth;
+    const slack = fullWidth - needed;
+    const align = node.layout.paragraphAlign ?? 'left';
+    const boneX = align === 'right' ? node.layout.x + slack : align === 'center' ? node.layout.x + slack / 2 : node.layout.x;
     bones.push({
-      x: node.layout.x,
+      x: boneX,
       y: node.layout.y,
-      width: node.layout.width,
+      width: needed,
       height: node.layout.height,
       borderRadius: node.layout.borderRadius ?? 0,
       type: node.layout.type,
