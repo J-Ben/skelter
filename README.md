@@ -18,7 +18,7 @@
 
 The skeleton loader is the first contact between your app and your user. That moment deserves care, not an afterthought maintained in a separate file that drifts from reality the moment you touch the real component.
 
-react-zero-skeleton changes the relationship. **The component IS its skeleton.** Wrap it once. The library measures the real layout at runtime, generates one bone per element, and keeps everything in sync automatically. Forever.
+react-zero-skeleton changes the relationship. **The component IS its skeleton.** Wrap it once. The library measures the real layout at runtime, generates one bone per element, and keeps everything in sync automatically. Forever. Bones are as tight as your layout: see [Accurate bones](#accurate-bones).
 
 ```tsx
 // Before: two things to write, two things to maintain, two things to break.
@@ -104,6 +104,74 @@ import { SkeletonTheme } from 'react-zero-skeleton'
 ```
 
 Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
+
+---
+
+## Accurate bones
+
+A bone is exactly what the library measures: the real element's box. So a bone is only as tight as your layout is. In a column, a `<Text>` stretches to the width of its container, even when the text is short, and its bone stretches with it.
+
+**Rule: if you want a bone to hug its content, make the element hug its content.** No prop to learn, it is plain layout.
+
+| Platform | Make an element fit its content |
+|----------|---------------------------------|
+| React Native | `alignSelf: 'flex-start'` on the element, or wrap it in a `<View style={{ flexDirection: 'row' }}>` |
+| Web | `width: 'fit-content'` |
+
+`fit-content` does not exist in React Native styles: use one of the two options above.
+
+### Case 1: a short text in a column
+
+```tsx
+// Bone is as wide as the card
+<Text style={s.subtitle}>{ref}</Text>
+
+// Bone is as wide as the text
+<Text style={[s.subtitle, { alignSelf: 'flex-start' }]}>{ref}</Text>
+```
+
+```
+Before                      After
+┌───────────────────────┐   ┌───────────────────────┐
+│ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ │   │ ▇▇▇▇▇▇▇▇              │
+└───────────────────────┘   └───────────────────────┘
+```
+
+### Case 2: texts side by side already fit
+
+Children of a `flexDirection: 'row'` take their own width, so nothing to do:
+
+```tsx
+<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+  <Text>{title}</Text>
+  <Text>{amount}</Text>
+</View>
+```
+
+### Case 3: a long text that wraps
+
+A text that fills the line keeps the full width: that is its real size. Use `SkeletonParagraph` if you want several lines of controlled length.
+
+### Case 4: bones touching each other
+
+Bones follow the real spacing. Stacked texts with no space between them give stacked bones with no space between them. Add the space in the component (`gap`, `marginTop`), and the skeleton gets it too:
+
+```tsx
+<View style={{ gap: 6 }}>
+  <Text style={s.title}>{title}</Text>
+  <Text style={[s.subtitle, { alignSelf: 'flex-start' }]}>{subtitle}</Text>
+</View>
+```
+
+### Case 5: web
+
+```tsx
+<p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
+```
+
+### Case 6: text still empty while loading
+
+The measure happens on the content you render. If your text is empty during loading, its width is unknown: pass `mockData` (or `mockProps`) so the bone gets the width of a realistic value.
 
 ---
 
@@ -580,20 +648,6 @@ const items = isLoading ? Array(6).fill(null) : realData
 ```
 
 Inside a `FlatList`, `shatter` falls back to `pulse` for performance and `maxBonesInList` caps the number of bones per cell. Each cell keeps one bone per element; pass `measureStrategy: 'root-only'` for a single block per cell.
-
----
-
-## Accurate bones: `fit-content`
-
-Block-level elements expand to fill their container by default, so their bone fills the full width even if the text is short. Add `width: 'fit-content'` (web) or `alignSelf: 'flex-start'` (React Native) to make each bone match the actual content width.
-
-```tsx
-// Web
-<p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
-
-// React Native
-<Text style={{ fontSize: 16, alignSelf: 'flex-start' }}>{title}</Text>
-```
 
 ---
 
