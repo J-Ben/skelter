@@ -267,8 +267,9 @@ function walkFiber(
         | undefined;
 
       // Explicit align wins; otherwise inherit textAlign from the wrapper style.
-      const styleAlign = normalizeTextAlign((flatStyle as Record<string, unknown>).textAlign as string | undefined);
-      const paragraphAlign = paragraphLines !== undefined ? paragraph?.align ?? styleAlign : styleAlign;
+      const paragraphAlign = paragraphLines !== undefined
+        ? paragraph?.align ?? normalizeTextAlign((flatStyle as Record<string, unknown>).textAlign as string | undefined)
+        : undefined;
 
       const nodeType = paragraphLines !== undefined ? 'text' : getElementType(typeName);
       let textContentWidth: number | undefined;

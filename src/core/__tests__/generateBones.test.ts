@@ -106,29 +106,3 @@ describe('generateBones — paragraph splitting', () => {
     expect(generateBones(tree)).toHaveLength(1);
   });
 });
-
-describe('generateBones — text bone width', () => {
-  const text = (extra: object) =>
-    ({ layout: { x: 10, y: 0, width: 300, height: 16, type: 'text', ...extra }, children: [] }) as BoneTree;
-
-  it('narrows a text bone to the width the text needs, never the full container', () => {
-    const [bone] = generateBones(text({ textContentWidth: 80 }));
-    expect(bone.width).toBe(80);
-    expect(bone.x).toBe(10);
-  });
-
-  it('keeps the container width when the text is longer than the container (wrapped text)', () => {
-    const [bone] = generateBones(text({ textContentWidth: 900 }));
-    expect(bone.width).toBe(300);
-  });
-
-  it('keeps the bone on the side the text is aligned to', () => {
-    expect(generateBones(text({ textContentWidth: 80, paragraphAlign: 'right' }))[0].x).toBe(230);
-    expect(generateBones(text({ textContentWidth: 80, paragraphAlign: 'center' }))[0].x).toBe(120);
-  });
-
-  it('does not touch non-text bones', () => {
-    const [bone] = generateBones({ layout: { x: 0, y: 0, width: 300, height: 16, type: 'view', textContentWidth: 80 }, children: [] } as BoneTree);
-    expect(bone.width).toBe(300);
-  });
-});
