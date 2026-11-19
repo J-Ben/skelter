@@ -165,7 +165,7 @@ Bones follow the real spacing. Stacked texts with no space between them give sta
 
 ### Case 5: let the library do the gap for you (`accurateBones`)
 
-`accurateBones` is **on by default**. It opens a small gap (4 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
+`accurateBones` is **on by default**. It opens a small gap (2 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
 
 ```tsx
 // Global
@@ -180,7 +180,7 @@ const Card = withSkeleton(CardView, { accurateBones: false })
 
 | Value | Effect |
 |-------|--------|
-| `true` (default) | gap of 4 px between touching bones |
+| `true` (default) | gap of 2 px between touching bones |
 | `{ gap: 8 }` | custom gap |
 | `false` | off |
 
@@ -685,7 +685,7 @@ No API was removed: v3 code compiles and runs. Only some defaults changed. To ke
 | React Native: no enter fade by default (`enter: 'none'` is now respected) | `enter: 'fade'` |
 | React Native: lists no longer switch to one block per cell | `measureStrategy: 'root-only'` |
 | React Native: box backgrounds don't animate | `boxAnimated: true` |
-| `accurateBones` defaults to `true` (4 px gap between touching bones) | `accurateBones: false` |
+| `accurateBones` defaults to `true` (2 px gap between touching bones) | `accurateBones: false` |
 
 If you worked around the exit flash with `exit="none"` or set `minDuration` on every component, you can remove those props.
 

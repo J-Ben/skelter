@@ -52,7 +52,7 @@ export interface SkeletonThemeProps {
    * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
-  /** Opens a gap between bones that would touch : default true (4 px) */
+  /** Opens a gap between bones that would touch : default true (2 px) */
   accurateBones?: boolean | { gap?: number };
   /** Duration of the exit animation, in ms : default 300 */
   exitDuration?: number;
