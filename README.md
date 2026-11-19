@@ -165,7 +165,7 @@ Bones follow the real spacing. Stacked texts with no space between them give sta
 
 ### Case 5: let the library do the gap for you (`accurateBones`)
 
-`accurateBones` is **on by default**. It opens a small gap (2 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
+`accurateBones` is **on by default**. It opens a small gap (4 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
 
 ```tsx
 // Global
@@ -180,7 +180,7 @@ const Card = withSkeleton(CardView, { accurateBones: false })
 
 | Value | Effect |
 |-------|--------|
-| `true` (default) | gap of 2 px between touching bones |
+| `true` (default) | gap of 4 px between touching bones |
 | `{ gap: 8 }` | custom gap |
 | `false` | off |
 
@@ -228,7 +228,7 @@ export default withSkeleton(InvoiceCard, {
 | `rootId` | Picks the element (`nativeID` on React Native, `id` on web) used as the skeleton root. Only its subtree is measured; the wrapper keeps its space. |
 | `skipIds` | Elements (`nativeID` / `id`) rendered as one solid bone, without walking into them: badges, chips, avatars with initials. |
 | `mockData` | Typed alias of `mockProps` (`WithSkeletonOptions<P>` is generic). `mockProps` still works; `mockData` wins when both are set. |
-| `boxColor` / `boxOpacity` / `boxAnimated` | Color, opacity (default `0.25`) and animation (default off) of box backgrounds (`SkeletonBox`, `skeletonRoot`). Available on `SkeletonTheme` and `skeletonConfig`. |
+| `boxColor` / `boxOpacity` / `boxAnimated` | Color, opacity (default `0.35`) and animation (default off) of box backgrounds (`SkeletonBox`, `skeletonRoot`). Available on `SkeletonTheme` and `skeletonConfig`. |
 
 v4 also fixes several React Native rendering issues (flash at the end of loading, FlatList detection, nested boxes, debug log in the bundle). See [Migrating from v3](#migrating-from-v3) for the changed defaults.
 
@@ -590,7 +590,7 @@ Like any `SkeletonConfig`, the per-element `skeletonConfig` takes priority over 
 | `revealOnExit` | `boolean` | `true` | Fade real content in under the skeleton during exit |
 | `minDuration` | `number` | `500` | Minimum ms the skeleton stays visible |
 | `boxColor` | `string` | `color` | Background color of box bones (`SkeletonBox`, `skeletonRoot`) |
-| `boxOpacity` | `number` | `0.25` | Opacity of box bones |
+| `boxOpacity` | `number` | `0.35` | Opacity of box bones |
 | `boxAnimated` | `boolean` | `false` | Animate box bones (`<SkeletonBox static>` still opts out) |
 | `disabled` | `boolean` | `false` | Disables skeleton entirely |
 | `shatterConfig` | `ShatterConfig` | - | Shatter animation config |
@@ -685,7 +685,8 @@ No API was removed: v3 code compiles and runs. Only some defaults changed. To ke
 | React Native: no enter fade by default (`enter: 'none'` is now respected) | `enter: 'fade'` |
 | React Native: lists no longer switch to one block per cell | `measureStrategy: 'root-only'` |
 | React Native: box backgrounds don't animate | `boxAnimated: true` |
-| `accurateBones` defaults to `true` (2 px gap between touching bones) | `accurateBones: false` |
+| `accurateBones` defaults to `true` (4 px gap between touching bones) | `accurateBones: false` |
+| `boxOpacity` defaults to `0.35` (box backgrounds slightly darker) | `boxOpacity: 0.25` |
 
 If you worked around the exit flash with `exit="none"` or set `minDuration` on every component, you can remove those props.
 

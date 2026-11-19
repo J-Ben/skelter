@@ -96,7 +96,7 @@ export const DEFAULT_SKELETON_CONFIG: Required<SkeletonConfig> = {
   highlightColor: '#F5F5F5',
   // '' = same as color. Boxes are drawn translucent behind their content bones.
   boxColor: '',
-  boxOpacity: 0.25,
+  boxOpacity: 0.35,
   boxAnimated: false,
   speed: 'normal',
   borderRadius: 4,

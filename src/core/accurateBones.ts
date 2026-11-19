@@ -1,7 +1,7 @@
 import type { Bone } from './types';
 
 /** Default gap (px) kept between two bones that would otherwise touch. */
-export const ACCURATE_BONES_GAP = 2;
+export const ACCURATE_BONES_GAP = 4;
 
 /** A bone may lose at most this share of its size to make room for a gap. */
 const MAX_SHRINK_RATIO = 0.3;

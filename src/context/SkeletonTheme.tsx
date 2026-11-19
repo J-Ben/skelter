@@ -23,7 +23,7 @@ export interface SkeletonThemeProps {
   highlightColor?: string;
   /** Background color of SkeletonBox / skeletonRoot containers : default = color */
   boxColor?: string;
-  /** Opacity of SkeletonBox / skeletonRoot container backgrounds : default 0.25 */
+  /** Opacity of SkeletonBox / skeletonRoot container backgrounds : default 0.35 */
   boxOpacity?: number;
   /** Animate SkeletonBox / skeletonRoot container backgrounds : default false */
   boxAnimated?: boolean;
@@ -52,7 +52,7 @@ export interface SkeletonThemeProps {
    * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
-  /** Opens a gap between bones that would touch : default true (2 px) */
+  /** Opens a gap between bones that would touch : default true (4 px) */
   accurateBones?: boolean | { gap?: number };
   /** Duration of the exit animation, in ms : default 300 */
   exitDuration?: number;

@@ -196,7 +196,7 @@ export interface SkeletonConfig {
   boxColor?: string;
   /**
    * Opacity (0–1) of SkeletonBox / skeletonRoot container backgrounds (v4).
-   * Default: 0.25.
+   * Default: 0.35.
    */
   boxOpacity?: number;
   /**
@@ -235,7 +235,7 @@ export interface SkeletonConfig {
   revealOnExit?: boolean;
   /**
    * Accurate bones: opens a gap between bones that would touch. Default: true
-   * (gap of 2 px). `false` disables it, `{ gap: 8 }` sets the gap.
+   * (gap of 4 px). `false` disables it, `{ gap: 8 }` sets the gap.
    */
   accurateBones?: boolean | { gap?: number };
   /**
