@@ -52,6 +52,8 @@ export interface SkeletonThemeProps {
    * while the exit animation plays. Default: true.
    */
   revealOnExit?: boolean;
+  /** Opens a gap between bones that would touch : default true (4 px) */
+  accurateBones?: boolean | { gap?: number };
   /** Duration of the exit animation, in ms : default 300 */
   exitDuration?: number;
   /**
@@ -178,6 +180,7 @@ export function SkeletonTheme({
   enter,
   exit,
   revealOnExit,
+  accurateBones,
   exitDuration,
   cascade,
   conditions,
@@ -209,6 +212,7 @@ export function SkeletonTheme({
       ...(enter !== undefined && { enter }),
       ...(exit !== undefined && { exit }),
       ...(revealOnExit !== undefined && { revealOnExit }),
+      ...(accurateBones !== undefined && { accurateBones }),
       ...(exitDuration !== undefined && { exitDuration }),
       ...(cascade !== undefined && { cascade }),
       ...(shatterConfig !== undefined && {
@@ -230,7 +234,7 @@ export function SkeletonTheme({
       parentContext.config,
       animation, color, highlightColor, boxColor, boxOpacity, boxAnimated, speed,
       borderRadius, direction, minDuration,
-      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, exitDuration, cascade,
+      disabled, shatterConfig, imageConfig, maxBonesInList, enter, exit, revealOnExit, accurateBones, exitDuration, cascade,
       conditions, adaptive,
     ]
   );

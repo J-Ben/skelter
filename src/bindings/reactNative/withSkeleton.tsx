@@ -14,6 +14,7 @@ import type { Bone, SkeletonConfig, StaticBone, WithSkeletonOptions, BoneStyleOv
 import { resolveSpeed, SKELETON_EXIT_MS } from '../../core/constants';
 import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/native/measureLayout';
+import { applyBoneGap, resolveBoneGap } from '../../core/accurateBones';
 import { generateBones } from '../../core/generateBones';
 import { resolveMockProps } from '../../core/options';
 import type { ScoringRect } from '../../adapters/native/measureLayout';
@@ -253,7 +254,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   // Components that mount already-loaded (e.g. list item remounted with a new key
   // once real data arrives) never have visible bones to cache, so fall back to
   // generating them straight from the measured boneTree.
-  const structuralBones = boneTree ? generateBones(boneTree) : [];
+  const structuralBones = boneTree ? applyBoneGap(generateBones(boneTree), resolveBoneGap(mergedConfig.accurateBones)) : [];
   const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
   const displayBones = (xray || isInspected || isExiting) ? cachedBones : bones;
 

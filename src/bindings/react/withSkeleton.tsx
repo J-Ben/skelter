@@ -14,6 +14,7 @@ import { useSkeleton } from './useSkeleton';
 import { useMeasureLayout } from '../../adapters/web/measureLayout';
 import type { WebMeasureOptions } from '../../adapters/web/measureLayout';
 import { SkeletonBone } from '../../adapters/web/SkeletonBone';
+import { applyBoneGap, resolveBoneGap } from '../../core/accurateBones';
 import { generateBones } from '../../core/generateBones';
 import { resolveMockProps } from '../../core/options';
 
@@ -655,7 +656,7 @@ const WebSkeletonRenderer = memo(function WebSkeletonRenderer<P extends object>(
   // Components that mount already-loaded (e.g. list item remounted with a new key
   // once real data arrives) never have visible bones to cache, so fall back to
   // generating them straight from the measured boneTree.
-  const structuralBones = boneTree ? generateBones(boneTree) : [];
+  const structuralBones = boneTree ? applyBoneGap(generateBones(boneTree), resolveBoneGap(mergedConfig.accurateBones)) : [];
   const cachedBones = lastBonesRef.current.length > 0 ? lastBonesRef.current : structuralBones;
   const displayBones = (showOverlay || xray || isInspectedForOverlay) ? cachedBones : [];
 

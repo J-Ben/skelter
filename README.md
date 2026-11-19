@@ -163,13 +163,33 @@ Bones follow the real spacing. Stacked texts with no space between them give sta
 </View>
 ```
 
-### Case 5: web
+### Case 5: let the library do the gap for you (`accurateBones`)
+
+`accurateBones` is **on by default**. It opens a small gap (4 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
+
+```tsx
+// Global
+<SkeletonTheme accurateBones={{ gap: 6 }}>…</SkeletonTheme>
+
+// One component
+<Card hasSkeleton isLoading={loading} skeletonConfig={{ accurateBones: false }} />
+```
+
+| Value | Effect |
+|-------|--------|
+| `true` (default) | gap of 4 px between touching bones |
+| `{ gap: 8 }` | custom gap |
+| `false` | off |
+
+In development on React Native, a short `Text` that fills its container logs a one-time hint to add `alignSelf: 'flex-start'`. The bone itself is never resized from a guess: only your layout decides its width.
+
+### Case 6: web
 
 ```tsx
 <p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
 ```
 
-### Case 6: text still empty while loading
+### Case 7: text still empty while loading
 
 The measure happens on the content you render. If your text is empty during loading, its width is unknown: pass `mockData` (or `mockProps`) so the bone gets the width of a realistic value.
 
@@ -662,6 +682,7 @@ No API was removed: v3 code compiles and runs. Only some defaults changed. To ke
 | React Native: no enter fade by default (`enter: 'none'` is now respected) | `enter: 'fade'` |
 | React Native: lists no longer switch to one block per cell | `measureStrategy: 'root-only'` |
 | React Native: box backgrounds don't animate | `boxAnimated: true` |
+| `accurateBones` defaults to `true` (4 px gap between touching bones) | `accurateBones: false` |
 
 If you worked around the exit flash with `exit="none"` or set `minDuration` on every component, you can remove those props.
 

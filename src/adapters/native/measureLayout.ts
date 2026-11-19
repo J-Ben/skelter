@@ -4,6 +4,7 @@ import type { LayoutChangeEvent } from 'react-native';
 import type { BoneTree, MeasuredLayout, ElementType, MeasureStrategy, BoneStyleOverride } from '../../core/types';
 import { measureFiberLeaves } from './fiberWalker';
 import { warnOnce } from '../../core/dev';
+import { isStretchedText } from '../../core/accurateBones';
 
 /**
  * Detects the element type from a React Native component displayName.
@@ -295,6 +296,12 @@ function buildAutoHook(options: AutoMeasureOptions): MeasureLayoutResult {
                 children: [],
               };
             } else {
+              if (layouts.some(l => isStretchedText(l, width))) {
+                warnOnce(
+                  'stretched-text',
+                  "A short Text fills the whole width of its container, so its bone does too. Add alignSelf: 'flex-start' to the Text (or wrap it in a row View) for a bone that fits the text. Set accurateBones: false to hide this hint."
+                );
+              }
               scoringLeavesRef.current = layouts.map(l => ({
                 x: l.x, y: l.y, w: l.width, h: l.height,
               }));
