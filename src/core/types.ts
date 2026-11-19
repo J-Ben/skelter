@@ -417,6 +417,11 @@ export interface StaticBone {
  */
 export interface WithSkeletonOptions<P = Record<string, unknown>> {
   /**
+   * Accurate bones for this component: gap between bones that would touch.
+   * Overrides the SkeletonTheme value; the `skeletonConfig` prop overrides this.
+   */
+  accurateBones?: boolean | { gap?: number };
+  /**
    * 'auto'      → one bone per leaf element (default)
    * 'root-only' → single root block (v0.2 compat)
    */

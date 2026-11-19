@@ -171,8 +171,11 @@ Bones follow the real spacing. Stacked texts with no space between them give sta
 // Global
 <SkeletonTheme accurateBones={{ gap: 6 }}>…</SkeletonTheme>
 
-// One component
-<Card hasSkeleton isLoading={loading} skeletonConfig={{ accurateBones: false }} />
+// One component, once (HOC option)
+const Card = withSkeleton(CardView, { accurateBones: false })
+
+// One usage (prop, wins over the HOC option)
+<Card hasSkeleton isLoading={loading} skeletonConfig={{ accurateBones: { gap: 8 } }} />
 ```
 
 | Value | Effect |

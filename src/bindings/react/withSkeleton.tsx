@@ -339,9 +339,14 @@ export function withSkeleton<P extends object>(
       hasSkeleton,
       isLoading,
       isLoadingSkeleton,
-      skeletonConfig,
+      skeletonConfig: skeletonConfigProp,
       ...componentProps
     } = props;
+    // Per-component default from the HOC options; the prop wins.
+    const skeletonConfig: SkeletonConfig | undefined =
+      options?.accurateBones !== undefined
+        ? { accurateBones: options.accurateBones, ...skeletonConfigProp }
+        : skeletonConfigProp;
 
     const resolvedHasSkeleton = hasSkeleton || isLoadingSkeleton || false;
     const resolvedIsLoading = isLoading || isLoadingSkeleton || false;
