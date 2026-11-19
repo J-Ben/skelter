@@ -94,7 +94,8 @@ export interface SkeletonProps {
   skeletonConfig?: SkeletonConfig;
 }
 
-type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData' | 'rootId'>> & {
+type ResolvedHocOptions = Required<Omit<WithSkeletonOptions, 'boneStyle' | 'mockData' | 'rootId' | 'accurateBones'>> & {
+  accurateBones?: WithSkeletonOptions['accurateBones'];
   boneStyle?: BoneStyleOverride;
   rootId?: string;
 };
