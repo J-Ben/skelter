@@ -41,6 +41,8 @@
 
 - de591db: `revealOnExit` is now a real cross-fade: the content fades in (0 → 1) while the bones fade out, instead of appearing at full opacity under bones that are still opaque (text wider than its bone showed around it at the start of the exit). New `exitDuration` option (SkeletonTheme or `skeletonConfig`, default 300 ms).
 
+- New exit animation `exit: 'pop'`: the skeleton zooms in (scale 1 → 1.15) while it fades out, like a stamp (React Native and web). Other exit types are unchanged.
+
 ### Patch Changes
 
 - f19e4ba: `react-zero-skeleton/package.json` is now exported (tools reading the package version no longer fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`), and the `types` condition is listed first in `exports` so TypeScript resolves it with every `moduleResolution`.

@@ -257,6 +257,7 @@ function exitTransform(exit: SkeletonExit): string | undefined {
   if (exit === 'fadeDown')  return 'translateY(10px)';
   if (exit === 'fadeLeft')  return 'translateX(-10px)';
   if (exit === 'fadeRight') return 'translateX(10px)';
+  if (exit === 'pop')       return 'scale(1.15)';
   return undefined;
 }
 
