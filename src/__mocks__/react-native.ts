@@ -24,6 +24,21 @@ const AccessibilityInfo = {
   addEventListener: () => ({ remove: () => {} }),
 };
 
+// Flattens nested style arrays the way RN does : later entries win.
+const StyleSheet = {
+  flatten(style: unknown): Record<string, unknown> {
+    if (!style) return {};
+    if (Array.isArray(style)) {
+      return style.reduce<Record<string, unknown>>((acc, s) => ({ ...acc, ...StyleSheet.flatten(s) }), {});
+    }
+    return style as Record<string, unknown>;
+  },
+};
+
+const UIManager = {
+  measure: () => {},
+};
+
 const RNView = 'View';
 const RNText = 'Text';
 const RNImage = 'Image';
@@ -31,6 +46,8 @@ const RNImage = 'Image';
 export {
   Animated,
   AccessibilityInfo,
+  StyleSheet,
+  UIManager,
   RNView as View,
   RNText as Text,
   RNImage as Image,

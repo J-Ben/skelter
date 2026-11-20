@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import { applyBoneGap, resolveBoneGap } from '../../core/accurateBones';
 import { generateBones } from '../../core/generateBones';
 import { DEFAULT_SKELETON_CONFIG } from '../../core/constants';
 import { resolveAnimation } from '../../core/adaptive';
@@ -145,7 +146,7 @@ export function useSkeleton({
   }, [isLoading, hasSkeleton, mergedConfig.disabled, mergedConfig.minDuration]);
 
   const bones: Bone[] = boneTree && isSkeletonVisible
-    ? generateBones(boneTree)
+    ? applyBoneGap(generateBones(boneTree), resolveBoneGap(mergedConfig.accurateBones))
     : [];
 
   return { mergedConfig, isSkeletonVisible, bones };

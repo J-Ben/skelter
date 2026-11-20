@@ -18,7 +18,7 @@
 
 The skeleton loader is the first contact between your app and your user. That moment deserves care, not an afterthought maintained in a separate file that drifts from reality the moment you touch the real component.
 
-react-zero-skeleton changes the relationship. **The component IS its skeleton.** Wrap it once. The library measures the real layout at runtime, generates one bone per element, and keeps everything in sync automatically. Forever.
+react-zero-skeleton changes the relationship. **The component IS its skeleton.** Wrap it once. The library measures the real layout at runtime, generates one bone per element, and keeps everything in sync automatically. Forever. Bones are as tight as your layout: see [Accurate bones](#accurate-bones).
 
 ```tsx
 // Before: two things to write, two things to maintain, two things to break.
@@ -107,6 +107,133 @@ Config priority: `skeletonConfig` prop > `SkeletonTheme` > defaults.
 
 ---
 
+## Accurate bones
+
+A bone is exactly what the library measures: the real element's box. So a bone is only as tight as your layout is. In a column, a `<Text>` stretches to the width of its container, even when the text is short, and its bone stretches with it.
+
+**Rule: if you want a bone to hug its content, make the element hug its content.** No prop to learn, it is plain layout.
+
+| Platform | Make an element fit its content |
+|----------|---------------------------------|
+| React Native | `alignSelf: 'flex-start'` on the element, or wrap it in a `<View style={{ flexDirection: 'row' }}>` |
+| Web | `width: 'fit-content'` |
+
+`fit-content` does not exist in React Native styles: use one of the two options above.
+
+### Case 1: a short text in a column
+
+```tsx
+// Bone is as wide as the card
+<Text style={s.subtitle}>{ref}</Text>
+
+// Bone is as wide as the text
+<Text style={[s.subtitle, { alignSelf: 'flex-start' }]}>{ref}</Text>
+```
+
+```
+Before                      After
+┌───────────────────────┐   ┌───────────────────────┐
+│ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ │   │ ▇▇▇▇▇▇▇▇              │
+└───────────────────────┘   └───────────────────────┘
+```
+
+### Case 2: texts side by side already fit
+
+Children of a `flexDirection: 'row'` take their own width, so nothing to do:
+
+```tsx
+<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+  <Text>{title}</Text>
+  <Text>{amount}</Text>
+</View>
+```
+
+### Case 3: a long text that wraps
+
+A text that fills the line keeps the full width: that is its real size. Use `SkeletonParagraph` if you want several lines of controlled length.
+
+### Case 4: bones touching each other
+
+Bones follow the real spacing. Stacked texts with no space between them give stacked bones with no space between them. Add the space in the component (`gap`, `marginTop`), and the skeleton gets it too:
+
+```tsx
+<View style={{ gap: 6 }}>
+  <Text style={s.title}>{title}</Text>
+  <Text style={[s.subtitle, { alignSelf: 'flex-start' }]}>{subtitle}</Text>
+</View>
+```
+
+### Case 5: let the library do the gap for you (`accurateBones`)
+
+`accurateBones` is **on by default**. It opens a small gap (4 px) between bones that would touch, so a card with no spacing never turns into one grey block. It never changes your layout, only the bones.
+
+```tsx
+// Global
+<SkeletonTheme accurateBones={{ gap: 6 }}>…</SkeletonTheme>
+
+// One component, once (HOC option)
+const Card = withSkeleton(CardView, { accurateBones: false })
+
+// One usage (prop, wins over the HOC option)
+<Card hasSkeleton isLoading={loading} skeletonConfig={{ accurateBones: { gap: 8 } }} />
+```
+
+| Value | Effect |
+|-------|--------|
+| `true` (default) | gap of 4 px between touching bones |
+| `{ gap: 8 }` | custom gap |
+| `false` | off |
+
+In development on React Native, a short `Text` that fills its container logs a one-time hint to add `alignSelf: 'flex-start'`. The bone itself is never resized from a guess: only your layout decides its width.
+
+### Case 6: web
+
+```tsx
+<p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
+```
+
+### Case 7: text still empty while loading
+
+The measure happens on the content you render. If your text is empty during loading, its width is unknown: pass `mockData` (or `mockProps`) so the bone gets the width of a realistic value.
+
+---
+
+## What's new in v4
+
+**No more wrappers.** v4 lets you describe the skeleton of a card from the `withSkeleton` options, without touching its JSX.
+
+```tsx
+function InvoiceCard({ client, amount, status }) {
+  return (
+    <Pressable style={s.card} onPress={open}>
+      <Text style={s.client}>{client}</Text>
+      <Text style={s.amount}>{amount}</Text>
+      <View nativeID="status" style={s.badge}>
+        <Text>{status}</Text>
+      </View>
+    </Pressable>
+  )
+}
+
+export default withSkeleton(InvoiceCard, {
+  skeletonRoot: true,           // the Pressable becomes the card frame bone, no SkeletonBox needed
+  skipIds: ['status'],          // the badge is one solid bone
+  mockData: { client: 'Jean VALJEAN', amount: '120,00 €', status: 'Paid' },
+})
+```
+
+| Option | What it does |
+|--------|--------------|
+| `skeletonRoot` | The component's root element becomes an implicit `SkeletonBox`: translucent frame, content bones on top. Works when the root is a `Pressable` / `TouchableOpacity`. |
+| `rootId` | Picks the element (`nativeID` on React Native, `id` on web) used as the skeleton root. Only its subtree is measured; the wrapper keeps its space. |
+| `skipIds` | Elements (`nativeID` / `id`) rendered as one solid bone, without walking into them: badges, chips, avatars with initials. |
+| `mockData` | Typed alias of `mockProps` (`WithSkeletonOptions<P>` is generic). `mockProps` still works; `mockData` wins when both are set. |
+| `boxColor` / `boxOpacity` / `boxAnimated` | Color, opacity (default `0.35`) and animation (default off) of box backgrounds (`SkeletonBox`, `skeletonRoot`). Available on `SkeletonTheme` and `skeletonConfig`. |
+
+v4 also fixes several React Native rendering issues (flash at the end of loading, FlatList detection, nested boxes, debug log in the bundle). See [Migrating from v3](#migrating-from-v3) for the changed defaults.
+
+---
+
 ## Animations
 
 Nine animations. Each has a reason to exist.
@@ -187,10 +314,14 @@ Played when the skeleton first appears.
 Played when the skeleton disappears and content takes over.
 
 ```tsx
-<SkeletonTheme animation="shatter" exit="fadeUp" revealOnExit>…</SkeletonTheme>
+<SkeletonTheme animation="shatter" exit="fadeUp">…</SkeletonTheme>
 ```
 
-`revealOnExit` keeps the real content visible underneath while the skeleton fades out, creating a reveal effect instead of an abrupt swap.
+By default (`revealOnExit: true`), the real content fades in underneath while the skeleton fades out: a cross-fade instead of an abrupt swap. Set `revealOnExit: false` to show the content only once the exit has finished.
+
+### Minimum duration
+
+The skeleton stays visible at least `minDuration` ms (default `500`), so a fast response doesn't produce a one-frame flicker. Set `minDuration: 0` to remove the skeleton as soon as `isLoading` is false.
 
 ---
 
@@ -211,7 +342,13 @@ function Stat({ label, value }) {
 }
 ```
 
-The box bone is always static (no animation). Children animate normally.
+The box bone is static by default; its children animate normally. Use `boxAnimated` (theme or `skeletonConfig`) to animate box backgrounds, `boxColor` / `boxOpacity` to style them, and `<SkeletonBox static>` to keep one box still even when `boxAnimated` is on.
+
+```tsx
+<SkeletonTheme boxColor="#C9D6F2" boxOpacity={0.6}>…</SkeletonTheme>
+```
+
+> In v4 you often don't need `SkeletonBox` for the card frame: use the `skeletonRoot` option of `withSkeleton` instead.
 
 ---
 
@@ -450,8 +587,11 @@ Like any `SkeletonConfig`, the per-element `skeletonConfig` takes priority over 
 | `cascade` | `number` | `0` | Stagger ms per pixel of vertical position |
 | `enter` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'none'` | Skeleton enter animation |
 | `exit` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'fade'` | Skeleton exit animation |
-| `revealOnExit` | `boolean` | `false` | Show real content under skeleton during exit |
-| `minDuration` | `number` | `0` | Minimum ms the skeleton stays visible |
+| `revealOnExit` | `boolean` | `true` | Fade real content in under the skeleton during exit |
+| `minDuration` | `number` | `500` | Minimum ms the skeleton stays visible |
+| `boxColor` | `string` | `color` | Background color of box bones (`SkeletonBox`, `skeletonRoot`) |
+| `boxOpacity` | `number` | `0.35` | Opacity of box bones |
+| `boxAnimated` | `boolean` | `false` | Animate box bones (`<SkeletonBox static>` still opts out) |
 | `disabled` | `boolean` | `false` | Disables skeleton entirely |
 | `shatterConfig` | `ShatterConfig` | - | Shatter animation config |
 | `maxBonesInList` | `number` | `0` | Max bones in FlatList (0 = unlimited) |
@@ -461,19 +601,25 @@ Like any `SkeletonConfig`, the per-element `skeletonConfig` takes priority over 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `measureStrategy` | `'auto' \| 'root-only'` | `'auto'` | `auto` = one bone per element; `root-only` = single block |
-| `maxDepth` | `number` | `8` | Max Fiber tree depth |
+| `maxDepth` | `number` | `20` | Max Fiber tree depth |
 | `exclude` | `string[]` | `[]` | Component displayNames to skip |
-| `mockProps` | `object` | `{}` | Props for the invisible warmup render |
+| `mockData` | `Partial<P>` | `{}` | Props for the invisible warmup render (typed) |
+| `mockProps` | `object` | `{}` | Untyped alias of `mockData` (kept for v3 code) |
+| `skeletonRoot` | `boolean` | `false` | Root element becomes an implicit `SkeletonBox` |
+| `rootId` | `string` | - | `nativeID` / `id` of the element used as skeleton root |
+| `skipIds` | `string[]` | `[]` | `nativeID` / `id` of elements drawn as one solid bone |
 
-#### `mockProps`: cold start
+#### `mockData`: cold start
 
-When real props carry no data on first load, `mockProps` provides a realistic layout for the warmup render:
+When real props carry no data on first load, `mockData` provides a realistic layout for the warmup render. It is typed against the component's props:
 
 ```tsx
 withSkeleton(ArticleCard, {
-  mockProps: { article: { title: 'Lorem ipsum', image: null } }
+  mockData: { article: { title: 'Lorem ipsum', image: null } }
 })
 ```
+
+In development, an unknown `rootId` or `skipIds` entry logs a single `[skelter]` warning.
 
 ### `ShatterConfig`
 
@@ -524,21 +670,27 @@ const items = isLoading ? Array(6).fill(null) : realData
 />
 ```
 
-`shatter` falls back to `pulse` automatically inside `FlatList` / `FlashList` for performance. `maxBonesInList` caps the number of bones per cell when lists are long.
+Inside a `FlatList`, `shatter` falls back to `pulse` for performance and `maxBonesInList` caps the number of bones per cell. Each cell keeps one bone per element; pass `measureStrategy: 'root-only'` for a single block per cell.
 
 ---
 
-## Accurate bones: `fit-content`
+## Migrating from v3
 
-Block-level elements expand to fill their container by default, so their bone fills the full width even if the text is short. Add `width: 'fit-content'` (web) or `alignSelf: 'flex-start'` (React Native) to make each bone match the actual content width.
+No API was removed: v3 code compiles and runs. Only some defaults changed. To keep the v3 behaviour, set the old value explicitly:
 
-```tsx
-// Web
-<p style={{ fontSize: 16, width: 'fit-content' }}>{title}</p>
+| Change in v4 | v3 behaviour |
+|--------------|--------------|
+| `minDuration` defaults to `500` ms | `minDuration: 0` |
+| `revealOnExit` defaults to `true` (cross-fade) | `revealOnExit: false` |
+| React Native: no enter fade by default (`enter: 'none'` is now respected) | `enter: 'fade'` |
+| React Native: lists no longer switch to one block per cell | `measureStrategy: 'root-only'` |
+| React Native: box backgrounds don't animate | `boxAnimated: true` |
+| `accurateBones` defaults to `true` (4 px gap between touching bones) | `accurateBones: false` |
+| `boxOpacity` defaults to `0.35` (box backgrounds slightly darker) | `boxOpacity: 0.25` |
 
-// React Native
-<Text style={{ fontSize: 16, alignSelf: 'flex-start' }}>{title}</Text>
-```
+If you worked around the exit flash with `exit="none"` or set `minDuration` on every component, you can remove those props.
+
+`mockProps` → `mockData` is optional: rename it to get type checking on the mock.
 
 ---
 
@@ -560,7 +712,7 @@ Block-level elements expand to fill their container by default, so their bone fi
 
 ## Limitations
 
-**Fiber walk reads React internals**: per-element measurement accesses `_reactInternals` / `_reactFiber`, which are undocumented but stable across React 17-18-19. If the walk fails, react-zero-skeleton falls back to a single root bone silently.
+**Fiber walk reads React internals**: per-element measurement accesses `_reactInternals` / `_reactFiber`, which are undocumented but stable across React 17-18-19. If the walk fails, react-zero-skeleton falls back to a single root bone (with a `[skelter]` warning in development).
 
 **wave / shiver require a gradient peer on React Native**: without `expo-linear-gradient` or `react-native-linear-gradient`, they fall back to a solid placeholder.
 

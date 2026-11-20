@@ -98,6 +98,7 @@ export default defineConfig([
     external: [
       'react',
       'react-native',
+      '@react-native/virtualized-lists',
       'expo-linear-gradient',
       'react-native-linear-gradient',
     ],
@@ -114,7 +115,15 @@ export default defineConfig([
       //
       // This post-process restores that semantic in the CJS output.
       const { readFileSync, writeFileSync } = await import('fs');
-      const OPTIONAL_PEERS = ['expo-linear-gradient', 'react-native-linear-gradient'];
+      // The VirtualizedListContext paths are optional too: without a bare
+      // require() Metro never bundled them, and FlatList detection
+      // (maxBonesInList, shatter → pulse) silently never worked.
+      const OPTIONAL_PEERS = [
+        'expo-linear-gradient',
+        'react-native-linear-gradient',
+        '@react-native/virtualized-lists/Lists/VirtualizedListContext',
+        'react-native/Libraries/Lists/VirtualizedListContext',
+      ];
       for (const out of ['dist/native/index.js', 'dist/native/index.mjs']) {
         const src = readFileSync(out, 'utf-8');
         const fixed = OPTIONAL_PEERS.reduce(
