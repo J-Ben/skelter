@@ -54,9 +54,10 @@ export type SkeletonEnter = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeR
  * 'fadeDown'  : fade + slide downward
  * 'fadeLeft'  : fade + slide left
  * 'fadeRight' : fade + slide right
+ * 'pop'       : fade + zoom in (scale 1 → 1.15), stamp-like
  * 'none'      : immediate removal (v0.4 behaviour)
  */
-export type SkeletonExit = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'none';
+export type SkeletonExit = 'fade' | 'fadeUp' | 'fadeDown' | 'fadeLeft' | 'fadeRight' | 'pop' | 'none';
 
 /**
  * Available animation modes for skeleton placeholders.

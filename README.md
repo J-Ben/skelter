@@ -317,6 +317,8 @@ Played when the skeleton disappears and content takes over.
 <SkeletonTheme animation="shatter" exit="fadeUp">…</SkeletonTheme>
 ```
 
+`exit="pop"` zooms the skeleton in (scale 1 → 1.15) while it fades out, like a stamp.
+
 By default (`revealOnExit: true`), the real content fades in underneath while the skeleton fades out: a cross-fade instead of an abrupt swap. Set `revealOnExit: false` to show the content only once the exit has finished.
 
 ### Minimum duration
@@ -586,7 +588,7 @@ Like any `SkeletonConfig`, the per-element `skeletonConfig` takes priority over 
 | `direction` | `'ltr' \| 'rtl'` | `'ltr'` | Shimmer direction |
 | `cascade` | `number` | `0` | Stagger ms per pixel of vertical position |
 | `enter` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'none'` | Skeleton enter animation |
-| `exit` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'none'` | `'fade'` | Skeleton exit animation |
+| `exit` | `'fade' \| 'fadeUp' \| 'fadeDown' \| 'fadeLeft' \| 'fadeRight' \| 'pop' \| 'none'` | `'fade'` | Skeleton exit animation |
 | `revealOnExit` | `boolean` | `true` | Fade real content in under the skeleton during exit |
 | `minDuration` | `number` | `500` | Minimum ms the skeleton stays visible |
 | `boxColor` | `string` | `color` | Background color of box bones (`SkeletonBox`, `skeletonRoot`) |

@@ -385,6 +385,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
   const exitOpacityRef = useRef(new Animated.Value(1)).current;
   const exitTranslateYRef = useRef(new Animated.Value(0)).current;
   const exitTranslateXRef = useRef(new Animated.Value(0)).current;
+  const exitScaleRef = useRef(new Animated.Value(1)).current;
   // revealOnExit : real content opacity during the exit (0 → 1 while the bones go 1 → 0).
   // Without it the content jumped to full opacity under still-opaque bones, and any
   // text wider than its bone showed around it for the first frames of the exit.
@@ -444,11 +445,20 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
     else if (exitType === 'fadeDown') targetY = 20;
     else if (exitType === 'fadeLeft') targetX = -20;
     else if (exitType === 'fadeRight') targetX = 20;
+    const isPop = exitType === 'pop';
 
     // Run opacity + translate animations in parallel (and the content reveal, see revealOpacityRef).
     const duration = mergedConfig.exitDuration ?? SKELETON_EXIT_MS;
     const anim = Animated.parallel([
-      Animated.timing(exitOpacityRef, { toValue: 0, duration, useNativeDriver: true }),
+      Animated.timing(exitOpacityRef, {
+        toValue: 0,
+        duration,
+        ...(isPop && { easing: Easing.out(Easing.quad) }),
+        useNativeDriver: true,
+      }),
+      ...(isPop
+        ? [Animated.timing(exitScaleRef, { toValue: 1.15, duration, easing: Easing.out(Easing.quad), useNativeDriver: true })]
+        : []),
       Animated.timing(exitTranslateYRef, { toValue: targetY, duration, useNativeDriver: true }),
       Animated.timing(exitTranslateXRef, { toValue: targetX, duration, useNativeDriver: true }),
       ...(mergedConfig.revealOnExit
@@ -464,6 +474,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
       exitOpacityRef.setValue(1);
       exitTranslateYRef.setValue(0);
       exitTranslateXRef.setValue(0);
+      exitScaleRef.setValue(1);
       revealOpacityRef.setValue(1);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -568,6 +579,7 @@ const SkeletonRenderer = memo(function SkeletonRenderer<P extends object>({
             transform: isExiting ? [
               { translateY: exitTranslateYRef },
               { translateX: exitTranslateXRef },
+              { scale: exitScaleRef },
             ] : undefined,
           }}
         >
