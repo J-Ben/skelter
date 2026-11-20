@@ -9,7 +9,7 @@ v4: advanced skeleton control and React Native rendering fixes.
 - `skeletonRoot`: the component's root element becomes an implicit `SkeletonBox` (translucent card frame, content bones on top), including when the root is a `Pressable` / `TouchableOpacity`. No `SkeletonBox` wrapper needed.
 - `rootId`: pick the element (`nativeID`, web `id`) used as the skeleton root; only its subtree is measured, the wrapper keeps its space.
 - `skipIds`: elements (`nativeID`, web `id`) rendered as one solid bone without walking into them — badges, chips.
-- `boxColor`, `boxOpacity`, `boxAnimated` (SkeletonTheme or `skeletonConfig`): color, opacity (default 0.25) and animation (default off) of `SkeletonBox` / `skeletonRoot` backgrounds. `<SkeletonBox static>` now actually stays still.
+- `boxColor`, `boxOpacity`, `boxAnimated` (SkeletonTheme or `skeletonConfig`): color, opacity (default 0.35) and animation (default off) of `SkeletonBox` / `skeletonRoot` backgrounds. `<SkeletonBox static>` now actually stays still.
 - `mockData`: typed alias of `mockProps` (`WithSkeletonOptions<P>` is now generic). `mockProps` keeps working; `mockData` wins when both are set.
 
 **Fixes (React Native)**
