@@ -35,7 +35,7 @@
 
 ### Minor Changes
 
-- e35030e: `accurateBones` (default `true`): opens a 4 px gap between bones that would touch. Configurable globally (`SkeletonTheme`) per HOC (`withSkeleton(C, { accurateBones })`) or per usage (`skeletonConfig`), `false` to disable. React Native dev hint when a short `Text` stretches to its container (`alignSelf: 'flex-start'`). An unknown host component without children (e.g. `LinearGradient`) now becomes one bone, with a dev warning.
+- e35030e: `accurateBones` (default `true`): opens a 4 px gap between bones that would touch. Configurable globally (`SkeletonTheme`) per HOC (`withSkeleton(C, { accurateBones })`) or per usage (`skeletonConfig`), `false` to disable. React Native dev hint when a short `Text` stretches to its container (`alignSelf: 'flex-start'`). An unknown host component without children (e.g. `LinearGradient`) now becomes one bone, with a dev warning. `skeletonRoot` / `rootId` also work when the root element is an unknown host (e.g. a `LinearGradient` wrapper): the frame is drawn instead of being attached to the first `Text`.
 
   `boxOpacity` default goes from `0.25` to `0.35`: `SkeletonBox` / `skeletonRoot` backgrounds are slightly darker. Set `boxOpacity: 0.25` to keep the previous look.
 

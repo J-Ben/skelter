@@ -215,7 +215,7 @@ function walkFiber(
       `"${typeName}" is not a recognised host component: it is treated as one solid bone. Call registerSkeletonLeaf('${typeName}') to silence this, or <SkeletonIgnore> to exclude it.`
     );
   }
-  if (isHostFiber && (isKnownHost(typeName) || unknownLeaf)) {
+  if (isHostFiber && (isKnownHost(typeName) || unknownLeaf || fiber === ctx.rootBoxFiber)) {
     // Decide whether to emit a bone for this node.
     // Content/interactive components are always bones.
     // Container Views are bones only when they have no host descendants
@@ -314,7 +314,7 @@ function findHostFiber(
   let child = fiber.child as Record<string, unknown> | null;
   while (child) {
     const isHost = (child.tag as number) === 5 || typeof child.type === 'string';
-    if (isHost && isKnownHost(getTypeName(child)) && predicate((child.memoizedProps ?? {}) as Record<string, unknown>)) {
+    if (isHost && predicate((child.memoizedProps ?? {}) as Record<string, unknown>)) {
       return child;
     }
     const found = findHostFiber(child, predicate);
